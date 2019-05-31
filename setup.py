@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='enigmatic',
-      version='0.1',
+      version='0.1.1',
       description='Enigma: Automatic Inference Guiding Machine',
       url='http://github.com/ai4reason/enigmatic',
       author='ai4reason',
