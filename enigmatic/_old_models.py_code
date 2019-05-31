@@ -1,0 +1,199 @@
+import os
+from . import enigmap, pretrains, trains, liblinear, protos, xgbooster
+from pyprove import expres, log
+
+ENIGMA_ROOT = os.getenv("ENIGMA_ROOT", "./Enigma")
+
+def path(name, filename=None):
+   if filename:
+      return os.path.join(ENIGMA_ROOT, name, filename)
+   else:
+      return os.path.join(ENIGMA_ROOT, name)
+
+def collect(name, rkeys, version, force, cores):
+   f_pre = path(name, "train.pre")
+   if force or not os.path.isfile(f_pre):
+      log.msg("+ extracting pretrains from results")
+      pretrains.prepare(rkeys, version, force, cores)
+      log.msg("+ collecting pretrains data")
+      pretrains.make(rkeys, out=file(f_pre, "w"))
+
+def setup(name, rkeys, version, hashing, force, cores):
+   os.system("mkdir -p %s" % path(name))
+   f_pre = path(name, "train.pre")
+   f_map = path(name, "enigma.map")
+   f_log = path(name, "train.log")
+  
+   if os.path.isfile(f_map) and not force:
+      return enigmap.load(f_map) if not hashing else hashing
+      
+   if rkeys:
+      collect(name, rkeys, version, force, cores)
+
+   #if os.path.isfile(f_log):
+   #   os.system("rm -f %s" % f_log)
+   if force or not os.path.isfile(f_map):
+      log.msg("+ creating feature info")
+      emap = enigmap.create(file(f_pre), hashing)
+      enigmap.save(emap, f_map, version, hashing)
+   else:
+      if not hashing:
+         emap = enigmap.load(f_map)
+
+   return emap if not hashing else hashing
+
+def standard(name, rkeys=None, version="VHSLC", force=False, gzip=True, xgb=False, xgb_params=None, hashing=None, cores=1):
+   f_pre = path(name, "train.pre")
+   f_in  = path(name, "train.in")
+   f_mod = path(name, "model.%s" % ("xgb" if xgb else "lin"))
+   f_out = path(name, "train.out")
+   f_log = path(name, "train.log")
+
+   if os.path.isfile(f_mod) and not force:
+      return
+
+   emap = setup(name, rkeys, version, hashing, force, cores)
+   if not emap:
+      os.system("rm -fr %s" % path(name))
+      return False
+
+   if force or not os.path.isfile(f_in):
+      log.msg("+ generating training data")
+      trains.make(file(f_pre), emap, out=file(f_in, "w"))
+
+   if xgb:
+      log.msg("+ training xgboost")
+      xlog = file(f_log, "a")
+      xgbooster.train(f_in, f_mod, xlog, xgb_params)
+      xlog.close()
+   else:
+      log.msg("+ training liblinear")
+      liblinear.train(f_in, f_mod, f_out, f_log)
+      stat = liblinear.stats(f_in, f_out)
+      log.msg("\n".join(["%s = %s"%(x,stat[x]) for x in sorted(stat)]))
+
+   if gzip:
+      os.system("cd %s; gzip -qf *.pre *.in *.out 2>/dev/null" % path(name))
+
+   return True
+
+def smartboost(name, rkeys=None, version="VHSLC", force=False, gzip=True, xgb=False, xgb_params=None, hashing=None, cores=1):
+   it = 0
+   f_pre = path(name, "train.pre")
+   f_log = path(name, "train.log")
+   f_in  = path(name, "%02dtrain.in" % it)
+   f_Mod = path(name, "model.lin")
+   if not force and os.path.isfile(f_Mod):
+      return
+  
+   emap = setup(name, rkeys, version, hashing, force, cores)
+   if not emap:
+      os.system("rm -fr %s" % path(name))
+      return False
+   trains.make(file(f_pre), emap, out=file(f_in, "w"))
+
+   method = None
+   log.msg("+ smart-boosting")
+   xlog = file(f_log, "a")
+   ##
+   #method = "WRONG:POS"
+   #terminate = lambda s: s["ACC:POS"] > 0.999
+   ##
+   while True:
+      xlog.write("\n--- ITER %d ---\n\n" % it)
+      f_in  = path(name, "%02dtrain.in" % it)
+      f_in2 = path(name, "%02dtrain.in" % (it+1))
+      f_out = path(name, "%02dtrain.out" % it)
+      f_mod = path(name, "%02dmodel.lin" % it)
+      xlog.flush()
+      liblinear.train(f_in, f_mod, f_out, f_log)
+      stat = liblinear.stats(f_in, f_out)
+      xlog.write("\n".join(["%s = %s"%(x,stat[x]) for x in sorted(stat)]))
+      xlog.write("\n")
+
+      if not method:
+         if stat["ACC:POS"] < stat["ACC:NEG"]:
+            method = "WRONG:POS"
+            terminate = lambda s: s["ACC:POS"] >= s["ACC:NEG"]
+         else:
+            method = "WRONG:NEG"
+            terminate = lambda s: s["ACC:NEG"] >= s["ACC:POS"]
+
+      #if stat["ACC:POS"] >= stat["ACC:NEG"]:
+      #if stat["WRONG:POS"] == 0:
+      if terminate(stat):
+         os.system("cp %s %s" % (f_mod, f_Mod))
+         break
+      trains.boost(f_in, f_out, out=file(f_in2,"w"), method=method)
+      it += 1
+
+   stat = liblinear.stats(f_in, f_out)
+   log.msg("\n".join(["%s = %s"%(x,stat[x]) for x in sorted(stat)]))
+   
+   if xgb:
+      f_xgb = path(name, "model.xgb")
+      xgbooster.train(f_in, f_xgb, xlog, xgb_params)
+   xlog.close()
+      
+   if gzip:
+      os.system("cd %s; gzip -qf *.pre *.in *.out 2>/dev/null" % path(name))
+   
+   return True
+
+def loop(model, pids, results=None, bid=None, limit=None, nick=None, xgb=False, efun="Enigma",
+         cores=4, version="VHSLC", force=False, gzip=True, eargs="", update=False, 
+         boosting=False, xgb_params=None, hashing=None):
+   if nick:
+      model = "%s/%s" % (model, nick)
+   log.msg("Building model %s" % model)
+   if ("h" in version and not hashing) or (hashing and "h" not in version):
+      raise Exception("enigma.models.loop: Parameter hashing must be set to the hash base (int) iff version contains 'h'.")   
+   if results is None:
+      results = {}
+   if update:
+      results.update(expres.benchmarks.eval(bid, pids, limit, cores=cores, eargs=eargs, force=force))
+   
+   if boosting:
+      smartboost(model, results, version, force=force, gzip=gzip, xgb=xgb, xgb_params=xgb_params, hashing=hashing, cores=cores)
+   else:
+      standard(model, results, version, force=force, gzip=gzip, xgb=xgb, xgb_params=xgb_params, hashing=hashing, cores=cores)
+      
+   new = [
+      protos.standalone(pids[0], model, mult=0, noinit=True, efun=efun),
+      protos.combined(pids[0], model, mult=0, noinit=True, efun=efun)
+   ]
+   if update:
+      pids.extend(new)
+      results.update(expres.benchmarks.eval(bid, new, limit, cores=cores, eargs=eargs, force=force))
+   
+   log.msg("Building model finished\n")
+   return new
+
+
+
+def join(name, models, combine=max):
+   f_maps = [path(model, "enigma.map") for model in models]
+   emap = enigmap.join(f_maps)
+
+   ws1 = {ftr:[] for ftr in emap}
+   ws2 = {ftr:[] for ftr in emap}
+   for model in models:
+      f_mod = path(model, "model.lin")
+      f_map = path(model, "enigma.map")
+      (header,w1,w2) = liblinear.load(f_mod, f_map)
+      for ftr in w1:
+         if w1[ftr] != 0:
+            ws1[ftr].append(w1[ftr])
+      for ftr in w2:
+         if w2[ftr] != 0:
+            ws2[ftr].append(w2[ftr])
+   
+   w1 = {ftr:combine(ws1[ftr]) for ftr in emap if ws1[ftr]}
+   w2 = {ftr:combine(ws2[ftr]) for ftr in emap if ws2[ftr]}
+
+   os.system("mkdir -p %s" % path(name))
+   f_mod = path(name, "model.lin")
+   f_map = path(name, "enigma.map")
+   enigmap.save(emap, f_map)
+   liblinear.save(header, w1, w2, emap, f_mod)
+
