@@ -8,7 +8,7 @@ This is enough if you plan to use Enigma.  There is no need to clone this
 repo manually.
 
 ```console
-$ pip install enigmatic
+$ pip install enigmatic --user
 ```
 
 This installs:
