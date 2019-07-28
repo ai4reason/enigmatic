@@ -54,6 +54,7 @@ def prepare1(job):
       #os.system("cat %s | grep '^cnf' >> %s" % (f_prf, f_pos))
    
    f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
+   f_map = expres.results.path(bid, pid, problem, limit, ext="map")
    if force or not os.path.isfile(f_dat):
       out = file(f_dat, "w")
       if not hashing:
@@ -62,7 +63,7 @@ def prepare1(job):
             #stdout=out, stderr=subprocess.STDOUT)
       else:
          subprocess.call(["enigma-features", "--free-numbers", "--enigma-features=%s"%version, \
-            "--feature-hashing=%s"%hashing, f_pos, f_neg, f_cnf], stdout=out)
+            "--feature-hashing=%s"%hashing, "--enigmap-file=%s"%f_map, f_pos, f_neg, f_cnf], stdout=out)
 
       out.close()
       if "W" in version:
