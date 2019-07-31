@@ -3,6 +3,7 @@ from . import enigmap, pretrains, trains, protos
 from pyprove import expres, log
 
 ENIGMA_ROOT = os.getenv("ENIGMA_ROOT", "./Enigma")
+RAMDISK_DIR = None
 
 DEFAULTS = {
    "gzip": True,
@@ -16,10 +17,13 @@ DEFAULTS = {
 
 
 def path(name, filename=None):
-   if filename:
-      return os.path.join(ENIGMA_ROOT, name, filename)
-   else:
-      return os.path.join(ENIGMA_ROOT, name)
+   def add(f):
+      return f if not filename else os.path.join(f, filename)
+      
+   f = add(os.path.join(ENIGMA_ROOT, name))
+   if RAMDISK_DIR and not os.path.isfile(f):
+      f = add(os.path.join(RAMDISK_DIR, name))
+   return f
 
 
 def collect(name, rkeys, settings):
@@ -67,6 +71,7 @@ def setup(name, rkeys, settings):
 
 
 def make(name, rkeys, settings):
+   
    learner = settings["learner"]
 
    f_pre = path(name, "train.pre")
@@ -111,21 +116,30 @@ def check(settings):
          raise Exception("enigma.models: Required setting '%s' not set!" % x)   
    if "results" not in settings:
       settings["results"] = {}
-
+   if "ramdisk" not in settings:
+      settings["ramdisk"] = None
 
 def update(settings, pids=None):
    if not pids:
       pids = settings["pids"]
+
    settings["results"].update(expres.benchmarks.eval(
       settings["bid"], pids, settings["limit"], cores=settings["cores"], 
       eargs=settings["eargs"], force=settings["force"]))
 
-
 def loop(model, settings, nick=None):
+   global RAMDISK_DIR
+
    check(settings)
    if nick:
       model = "%s/%s" % (model, nick)
    log.msg("Building model %s" % model)
+
+   if settings["ramdisk"]:
+      RAMDISK_DIR = os.path.join(settings["ramdisk"], "Enigma")
+      os.system("mkdir -p %s" % RAMDISK_DIR)
+      expres.results.RAMDISK_DIR = os.path.join(settings["ramdisk"], "00RESULTS")
+      os.system("mkdir -p %s" % expres.results.RAMDISK_DIR)
 
    update(settings)
    if not make(model, settings["results"], settings):
@@ -136,7 +150,20 @@ def loop(model, settings, nick=None):
       protos.coop(settings["pids"][0], model, mult=0, noinit=True, efun=efun)
    ]
    settings["pids"].extend(new)
+
+   if settings["ramdisk"]:
+      os.system("mkdir -p %s" % ENIGMA_ROOT)
+      os.system("cp -rf %s/* %s" % (RAMDISK_DIR, ENIGMA_ROOT))
+      os.system("rm -fr %s" % RAMDISK_DIR)
+      RAMDISK_DIR = None
+   
    update(settings, new)
+
+   if settings["ramdisk"]:
+      os.system("mkdir -p %s" % expres.results.RESULTS_DIR)
+      os.system("cp -rf %s/* %s" % (expres.results.RAMDISK_DIR, expres.results.RESULTS_DIR))
+      os.system("rm -fr %s" % expres.results.RAMDISK_DIR)
+      expres.results.RAMDISK_DIR = None
    
    log.msg("Building model finished\n")
    return new

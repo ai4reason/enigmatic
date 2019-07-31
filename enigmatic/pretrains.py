@@ -25,6 +25,14 @@ def proofstate(f_dat, f_pos, f_neg, hashing=None):
       raise Exception("File %s does not match files %s and %s!" % (f_dat,f_pos,f_neg))
    file(f_dat, "w").write("\n".join(dat))
 
+#import traceback
+#
+#def prepare2(job):
+#   try:
+#      prepare1(job)
+#   except:
+#      print traceback.format_exc()
+
 def prepare1(job):
    (bid,pid,problem,limit,version,force,hashing) = job
 
