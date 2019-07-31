@@ -126,7 +126,7 @@ def update(settings, pids=None):
    settings["results"].update(expres.benchmarks.eval(
       settings["bid"], pids, settings["limit"], cores=settings["cores"], 
       eargs=settings["eargs"], force=settings["force"]))
-   
+
 def loop(model, settings, nick=None):
    global RAMDISK_DIR
 
