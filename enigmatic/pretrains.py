@@ -86,6 +86,7 @@ def prepare(rkeys, version, force=False, cores=1, hashing=None):
    pool = Pool(cores)
    res = pool.map_async(prepare1, jobs).get(365*24*3600)
    pool.close()
+   pool.join()
 
 def translate(f_cnf, f_conj, f_out):
    "deprecated?"
