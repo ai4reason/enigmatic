@@ -37,6 +37,8 @@ def prepare1(job):
    #result = rkeys[(bid,pid,problem,limit)]
    f_pos = expres.results.path(bid, pid, problem, limit, ext="pos")
    f_neg = expres.results.path(bid, pid, problem, limit, ext="neg")
+   os.system("mkdir -p %s" % os.path.dirname(f_pos))
+   os.system("mkdir -p %s" % os.path.dirname(f_neg))
    if force or (not (os.path.isfile(f_pos) and os.path.isfile(f_neg))):
       result = expres.results.load(bid, pid, problem, limit, trains=True, proof=True)
       if force or not os.path.isfile(f_pos):
@@ -55,6 +57,8 @@ def prepare1(job):
    
    f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
    f_map = expres.results.path(bid, pid, problem, limit, ext="map")
+   os.system("mkdir -p %s" % os.path.dirname(f_dat))
+   os.system("mkdir -p %s" % os.path.dirname(f_map))
    if force or not os.path.isfile(f_dat):
       out = file(f_dat, "w")
       if not hashing:
