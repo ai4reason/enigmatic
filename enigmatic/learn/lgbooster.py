@@ -1,4 +1,5 @@
 import lightgbm as lgb
+from pyprove import log
 from .learner import Learner
 
 DEFAULTS = {
@@ -35,6 +36,9 @@ class LightGBM(Learner):
       labels = dtrain.get_label()
       pos = float(len([x for x in labels if x == 1]))
       neg = float(len([x for x in labels if x == 0]))
+      
+      log.msg(": train.pos.count = %d" % pos)
+      log.msg(": train.neg.count = %d" % neg)
 
       self.params["scale_pos_weight"] = (neg/pos)
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain])
