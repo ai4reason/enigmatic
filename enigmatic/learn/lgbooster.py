@@ -39,5 +39,6 @@ class LightGBM(Learner):
       self.params["scale_pos_weight"] = (neg/pos)
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain])
       bst.save_model(f_mod)
-      return bst
+      bst.free_dataset()
+      bst.free_network()
 
