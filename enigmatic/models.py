@@ -1,4 +1,5 @@
 import os
+import json
 from . import enigmap, pretrains, trains, protos
 from pyprove import expres, log
 
@@ -74,10 +75,11 @@ def make(name, rkeys, settings):
    
    learner = settings["learner"]
 
-   f_pre = path(name, "train.pre")
-   f_in  = path(name, "train.in")
-   f_mod = path(name, "model.%s" % learner.ext())
-   f_log = path(name, "train.log")
+   f_pre   = path(name, "train.pre")
+   f_in    = path(name, "train.in")
+   f_stats = path(name, "train.stats")
+   f_mod   = path(name, "model.%s" % learner.ext())
+   f_log   = path(name, "train.log")
 
    if os.path.isfile(f_mod) and not settings["force"]:
       return True
@@ -92,8 +94,11 @@ def make(name, rkeys, settings):
          log.msg("+ generating training data")
          trains.make(file(f_pre), emap, out=file(f_in, "w"))
 
-   log.msg("+ training %s" % learner.name())
-   learner.build(f_in, f_mod, f_log)
+   log.msg("+ training %s model" % learner.name())
+   learner.build(f_in, f_mod, f_log, f_stats)
+
+   stats = json.load(file(f_stats)) if os.path.isfile(f_stats) else {}
+   log.msg("+ training statistics:\n%s" % "\n".join(["                 : %20s = %s"%(x,stats[x]) for x in sorted(stats)]))
 
    if settings["gzip"]:
       log.msg("+ compressing training files")

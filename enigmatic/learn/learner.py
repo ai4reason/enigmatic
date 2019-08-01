@@ -18,11 +18,11 @@ class Learner:
    def name(self):
       return "learner"
 
-   def train(self, f_in, f_mod, f_log=None):
+   def train(self, f_in, f_mod, f_log=None, f_stats=None):
       pass
 
-   def build(self, f_in, f_mod, f_log=None):
-      ret = self.train(f_in, f_mod, f_log)
+   def build(self, f_in, f_mod, f_log=None, f_stats=None):
+      ret = self.train(f_in, f_mod, f_log, f_stats)
       return ret
 
    def predict(self, f_in, f_mod):
