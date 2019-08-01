@@ -30,7 +30,7 @@ class XGBoost(Learner):
       args = ", ".join(args)
       return "%s(%s, num_round=%s)" % (self.name(), args, self.num_round)
 
-   def train(self, f_in, f_mod):
+   def train(self, f_in, f_mod, f_log=None):
       dtrain = xgb.DMatrix(f_in)
       labels = dtrain.get_label()
       pos = float(len([x for x in labels if x == 1]))

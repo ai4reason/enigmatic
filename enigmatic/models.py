@@ -93,9 +93,7 @@ def make(name, rkeys, settings):
          trains.make(file(f_pre), emap, out=file(f_in, "w"))
 
    log.msg("+ training %s" % learner.name())
-   tlog = file(f_log, "a")
-   learner.build(f_in, f_mod, tlog)
-   tlog.close()
+   learner.build(f_in, f_mod, f_log)
 
    if settings["gzip"]:
       log.msg("+ compressing training files")

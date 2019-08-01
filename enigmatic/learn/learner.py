@@ -18,20 +18,11 @@ class Learner:
    def name(self):
       return "learner"
 
-   def train(self, f_in, f_mod):
+   def train(self, f_in, f_mod, f_log=None):
       pass
 
-   def build(self, f_in, f_mod, log=None):
-      if log:
-         log.write("\nTraining Enigma model (%s):\n\n" % f_in)
-         oldout = sys.stdout
-         olderr = sys.stderr
-         sys.stdout = log
-         sys.stderr = log
-      ret = self.train(f_in, f_mod)
-      if log:
-         sys.stdout = oldout
-         sys.stderr = olderr
+   def build(self, f_in, f_mod, f_log=None):
+      ret = self.train(f_in, f_mod, f_log)
       return ret
 
    def predict(self, f_in, f_mod):
