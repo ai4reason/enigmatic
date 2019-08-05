@@ -5,11 +5,12 @@ def solo(pid, name, mult=0, noinit=False, efun="Enigma", fullname=False):
    proto = expres.protos.load(pid)
    enigma = "1*%s(PreferWatchlist,%s,%s)" % (efun, name, mult)
    eproto = "%s-H'(%s)'" % (proto[:proto.index("-H'")], enigma)
+   if noinit:
+      eproto = eproto.replace("--prefer-initial-clauses", "")
    if fullname:
       post = efun
       post += ("0M%s" % mult) if mult else "0"
       if noinit:
-         eproto = eproto.replace("--prefer-initial-clauses", "")
          post += "No" 
       epid = "Enigma+%s+%s+%s" % (name.replace("/","+"), pid, post)
    else:
@@ -28,9 +29,10 @@ def coop(pid, name, freq=None, mult=0, noinit=False, efun="Enigma", fullname=Fal
    post += ("M%s" % mult) if mult else ""
    enigma = "%d*%s(PreferWatchlist,%s,%s)" % (freq,efun,name,mult)
    eproto = proto.replace("-H'(", "-H'(%s,"%enigma)
+   if noinit:
+      eproto = eproto.replace("--prefer-initial-clauses", "")
    if fullname:
       if noinit:
-         eproto = eproto.replace("--prefer-initial-clauses", "")
          post += "No"
       epid = "Enigma+%s+%s+%s" % (name.replace("/","+"), pid, post)
    else:
