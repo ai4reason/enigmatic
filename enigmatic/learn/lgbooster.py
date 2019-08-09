@@ -45,7 +45,7 @@ class LightGBM(Learner):
       neg = len([x for x in pneg if x<0.5])
       return (pos, neg)
 
-   def train(self, f_in, f_mod, f_log=None, f_stats=None, test_size=0):
+   def train(self, f_in, f_mod, f_log=None, f_stats=None, test_size=0.1):
 
       def posneg(data):
          labels = data.get_label()
@@ -55,7 +55,7 @@ class LightGBM(Learner):
 
       stats = {}
 
-      (xall, yall) = load_svmlight_file(f_in)
+      (xall, yall) = load_svmlight_file(f_in, zero_based=True)
       if test_size:
          (xtrain, xtest, ytrain, ytest) = train_test_split(xall, yall, test_size=test_size, random_state=43)
       else:
