@@ -98,7 +98,7 @@ def make(name, rkeys, settings):
    learner.build(f_in, f_mod, f_log, f_stats)
 
    stats = json.load(file(f_stats)) if os.path.isfile(f_stats) else {}
-   log.msg("+ training statistics:\n%s" % "\n".join(["                 : %20s = %s"%(x,stats[x]) for x in sorted(stats)]))
+   log.msg("+ training statistics:\n%s" % "\n".join(["                 : %s = %s"%(x,stats[x]) for x in sorted(stats)]))
 
    if settings["gzip"]:
       log.msg("+ compressing training files")
