@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import sys
 import json
 from enigmatic.learn import XGBoost
 
 if len(sys.argv) != 5:
-   print "usage: %s train.in model.out train.stats {json params}" % sys.argv[0]
+   print("usage: %s train.in model.out train.stats {json params}" % sys.argv[0])
    sys.exit()
 
 f_in = sys.argv[1]
