@@ -86,5 +86,5 @@ class LightGBM(Learner):
          stats["test.neg.acc"] = neg / float(stats["test.neg.count"])
 
       if f_stats:
-         json.dump(stats, file(f_stats,"w"))
+         json.dump(stats, open(f_stats,"w"))
 

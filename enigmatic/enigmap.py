@@ -17,7 +17,7 @@ def load(f_map):
    emap = {}
    if not os.path.exists(f_map):
       return emap
-   for line in file(f_map):
+   for line in open(f_map):
       if line.startswith("version") or line.startswith("hash_base"):
          continue
       # FIXME: load hashed stuff
@@ -28,7 +28,7 @@ def load(f_map):
    return emap
 
 def save(emap, f_map, version, hashing=None):
-   out = file(f_map, "w")
+   out = open(f_map, "w")
    out.write('version("%s").\n' % version)
    if hashing:
       out.write('hash_base(%s).\n' % hashing)

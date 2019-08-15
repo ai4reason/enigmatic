@@ -38,7 +38,7 @@ def collect(name, rkeys, settings):
       log.msg("+ extracting training data from results")
       pretrains.prepare(rkeys, version, force, cores, hashing)
       log.msg("+ collecting %s data" % ("training" if hashing else "pretrains"))
-      pretrains.make(rkeys, out=file(f_dat, "w"), hashing=hashing)
+      pretrains.make(rkeys, out=open(f_dat, "w"), hashing=hashing)
 
 
 def setup(name, rkeys, settings):
@@ -55,14 +55,14 @@ def setup(name, rkeys, settings):
       collect(name, rkeys, settings)
 
    if hashing and not settings["hash_debug"]:
-      file(f_map,"w").write('version("%s").\nhash_base(%s).\n' % (settings["version"], hashing))
+      open(f_map,"w").write('version("%s").\nhash_base(%s).\n' % (settings["version"], hashing))
       return hashing
 
    #if os.path.isfile(f_log):
    #   os.system("rm -f %s" % f_log)
    if settings["force"] or not os.path.isfile(f_map):
       log.msg("+ creating feature info")
-      emap = enigmap.create(file(f_pre), hashing)
+      emap = enigmap.create(open(f_pre), hashing)
       enigmap.save(emap, f_map, settings["version"], hashing)
    else:
       if not hashing:
@@ -92,12 +92,12 @@ def make(name, rkeys, settings):
    if settings["hash_debug"] or not settings["hashing"]:
       if settings["force"] or not os.path.isfile(f_in):
          log.msg("+ generating training data")
-         trains.make(file(f_pre), emap, out=file(f_in, "w"))
+         trains.make(open(f_pre), emap, out=open(f_in, "w"))
 
    log.msg("+ training %s model" % learner.name())
    learner.build(f_in, f_mod, f_log, f_stats)
 
-   stats = json.load(file(f_stats)) if os.path.isfile(f_stats) else {}
+   stats = json.load(open(f_stats)) if os.path.isfile(f_stats) else {}
    log.msg("+ training statistics:\n%s" % "\n".join(["                 : %s = %s"%(x,stats[x]) for x in sorted(stats)]))
 
    if settings["gzip"]:
