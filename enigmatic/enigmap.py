@@ -65,6 +65,6 @@ def create(pre, hashing=None):
 def join(f_maps):
    features = set()
    for f_map in f_maps:
-      features.update(load(f_map).keys())
+      features.update(list(load(f_map).keys()))
    return {y:x for (x,y) in enumerate(sorted(features), start=1)}
 

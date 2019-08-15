@@ -26,7 +26,7 @@ def stats(f_in, f_out):
    ins = [int(x.split()[0]) for x in ins]
 
    outs = file(f_out).read().strip().split("\n")
-   outs = map(int, outs)
+   outs = list(map(int, outs))
 
    stat = {}
    stat["COUNT"] = 0
@@ -113,13 +113,13 @@ def save(header, w1, w2, emap, f_mod):
    info("bias")
    lines.write("w\n")
 
-   for i in xrange(1,len(rev)+1):
+   for i in range(1,len(rev)+1):
       if rev[i] in w1 and w1[rev[i]] != 0:
          lines.write("%.16f\n"%w1[rev[i]])
       else:
          lines.write("0\n")
    
-   for i in xrange(1,len(rev)+1):
+   for i in range(1,len(rev)+1):
       if rev[i] in w2 and w2[rev[i]] != 0:
          lines.write("%.16f\n"%w2[rev[i]])
       else:
