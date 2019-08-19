@@ -1,5 +1,8 @@
 import os
 import json
+from multiprocessing import Process
+from progress.bar import FillingSquaresBar as Bar
+
 from . import enigmap, pretrains, trains, protos
 from pyprove import expres, log
 
@@ -17,23 +20,26 @@ DEFAULTS = {
 }
 
 
-def path(name, filename=None):
+def path(model, filemodel=None):
    def add(f):
-      return f if not filename else os.path.join(f, filename)
+      return f if not filemodel else os.path.join(f, filemodel)
       
-   f = add(os.path.join(ENIGMA_ROOT, name))
+   f = add(os.path.join(ENIGMA_ROOT, model))
    if RAMDISK_DIR and not os.path.isfile(f):
-      f = add(os.path.join(RAMDISK_DIR, name))
+      f = add(os.path.join(RAMDISK_DIR, model))
    return f
 
 
-def collect(name, rkeys, settings):
+def name(bid, limit, ref, version, learner, hashing, **others):
+   return "%s-%s/%s-%s/%s" % (bid.replace("/","-"), limit, ref, version, learner.desc())
+
+def collect(model, rkeys, settings):
    version = settings["version"]
    force = settings["force"]
    cores = settings["cores"]
    hashing = settings["hashing"] if not settings["hash_debug"] else None
 
-   f_dat = path(name, "train.%s" % ("in" if hashing else "pre"))
+   f_dat = path(model, "train.%s" % ("in" if hashing else "pre"))
    if force or not os.path.isfile(f_dat):
       log.msg("+ extracting training data from results")
       pretrains.prepare(rkeys, version, force, cores, hashing)
@@ -41,18 +47,18 @@ def collect(name, rkeys, settings):
       pretrains.make(rkeys, out=open(f_dat, "w"), hashing=hashing)
 
 
-def setup(name, rkeys, settings):
-   os.system("mkdir -p %s" % path(name))
-   f_pre = path(name, "train.pre")
-   f_map = path(name, "enigma.map")
-   f_log = path(name, "train.log")
+def setup(model, rkeys, settings):
+   os.system("mkdir -p %s" % path(model))
+   f_pre = path(model, "train.pre")
+   f_map = path(model, "enigma.map")
+   f_log = path(model, "train.log")
    hashing = settings["hashing"]
   
    if os.path.isfile(f_map) and os.path.isfile(f_pre) and not settings["force"]:
       return enigmap.load(f_map) if not hashing else hashing
       
    if rkeys:
-      collect(name, rkeys, settings)
+      collect(model, rkeys, settings)
 
    if hashing and not settings["hash_debug"]:
       open(f_map,"w").write('version("%s").\nhash_base(%s).\n' % (settings["version"], hashing))
@@ -71,22 +77,22 @@ def setup(name, rkeys, settings):
    return emap if not hashing else hashing
 
 
-def make(name, rkeys, settings):
+def make(model, rkeys, settings):
    
    learner = settings["learner"]
 
-   f_pre   = path(name, "train.pre")
-   f_in    = path(name, "train.in")
-   f_stats = path(name, "train.stats")
-   f_mod   = path(name, "model.%s" % learner.ext())
-   f_log   = path(name, "train.log")
+   f_pre   = path(model, "train.pre")
+   f_in    = path(model, "train.in")
+   f_stats = path(model, "train.stats")
+   f_mod   = path(model, "model.%s" % learner.ext())
+   f_log   = path(model, "train.log")
 
    if os.path.isfile(f_mod) and not settings["force"]:
       return True
 
-   emap = setup(name, rkeys, settings)
+   emap = setup(model, rkeys, settings)
    if not emap:
-      os.system("rm -fr %s" % path(name))
+      os.system("rm -fr %s" % path(model))
       return False
    
    if settings["hash_debug"] or not settings["hashing"]:
@@ -95,40 +101,54 @@ def make(name, rkeys, settings):
          trains.make(open(f_pre), emap, out=open(f_in, "w"))
 
    log.msg("+ training %s model" % learner.name())
-   learner.build(f_in, f_mod, f_log, f_stats)
+   p = Process(target=learner.build, args=(f_in,f_mod,f_log,f_stats))
+   p.start()
+
+   # wait and show progress bar 
+   total = learner.rounds()+1
+   bar = Bar("[3/3]", max=learner.rounds(), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+   bar.next()
+   done = 1
+   while p.is_alive():
+      cur = learner.current(f_log)
+      while done < cur:
+         done += 1
+         bar.next()
+      p.join(0.1)
+   while done < total:
+      done += 1
+      bar.next()
+   bar.finish()
 
    stats = json.load(open(f_stats)) if os.path.isfile(f_stats) else {}
    log.msg("+ training statistics:\n%s" % "\n".join(["                 : %s = %s"%(x,stats[x]) for x in sorted(stats)]))
 
    if settings["gzip"]:
       log.msg("+ compressing training files")
-      os.system("cd %s; gzip -qf *.pre *.in *.out 2>/dev/null" % path(name))
+      os.system("cd %s; gzip -qf *.pre *.in *.out 2>/dev/null" % path(model))
 
    return True
 
 
 def check(settings):
-   if ("h" in settings["version"] and not settings["hashing"]) or \
-      (settings["hashing"] and "h" not in settings["version"]):
-         raise Exception("enigma.models: Parameter hashing must be set to the hash base (int) iff version contains 'h'.")   
+
    for x in DEFAULTS:
       if x not in settings:
          settings[x] = DEFAULTS[x]
-   for x in ["bid", "pids", "learner"]:
+   for x in ["bid", "pids", "learner", "ref"]:
       if x not in settings:
          raise Exception("enigma.models: Required setting '%s' not set!" % x)   
+   if "hashing" not in settings:
+      settings["hashing"] = 2**15
    if "results" not in settings:
       settings["results"] = {}
    if "ramdisk" not in settings:
       settings["ramdisk"] = None
 
-def update(settings, pids=None):
-   if not pids:
-      pids = settings["pids"]
-
-   settings["results"].update(expres.benchmarks.eval(
-      settings["bid"], pids, settings["limit"], cores=settings["cores"], 
-      eargs=settings["eargs"], force=settings["force"]))
+def update(results, only=None, **others):
+   if only:
+      others["pids"] = only
+   results.update(expres.benchmarks.eval(**others))
 
 def loop(model, settings, nick=None):
    global RAMDISK_DIR
@@ -144,7 +164,7 @@ def loop(model, settings, nick=None):
       expres.results.RAMDISK_DIR = os.path.join(settings["ramdisk"], "00RESULTS")
       os.system("mkdir -p %s" % expres.results.RAMDISK_DIR)
 
-   update(settings)
+   update(**settings)
    if not make(model, settings["results"], settings):
       raise Exception("Enigma: FAILED: Building model %s" % model)
    efun = settings["learner"].efun()
@@ -160,7 +180,7 @@ def loop(model, settings, nick=None):
       os.system("rm -fr %s" % RAMDISK_DIR)
       RAMDISK_DIR = None
    
-   update(settings, new)
+   update(only=new, **settings)
 
    if settings["ramdisk"]:
       os.system("mkdir -p %s" % expres.results.RESULTS_DIR)

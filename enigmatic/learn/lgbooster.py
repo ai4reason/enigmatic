@@ -26,6 +26,9 @@ class LightGBM(Learner):
    def name(self):
       return "LightGBM"
 
+   def desc(self):
+      return "lgb-d%(num_round)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
+
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]
       args = ", ".join(args)

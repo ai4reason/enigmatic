@@ -18,6 +18,9 @@ class Learner:
    def name(self):
       return "learner"
 
+   def desc(self):
+      return "default"
+
    def train(self, f_in, f_mod, f_log=None, f_stats=None):
       pass
 

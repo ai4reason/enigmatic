@@ -1,4 +1,5 @@
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
+from progress.bar import FillingSquaresBar as Bar
 import subprocess
 from pyprove import expres, eprover
 import os
@@ -34,7 +35,9 @@ def proofstate(f_dat, f_pos, f_neg, hashing=None):
 #      print traceback.format_exc()
 
 def prepare1(job):
-   (bid,pid,problem,limit,version,force,hashing) = job
+   print("run")
+   print(job)
+   (bid,pid,problem,limit,version,force,hashing,queue) = job
 
    f_problem = expres.benchmarks.path(bid, problem)
    f_cnf = expres.benchmarks.path(bid, "."+problem)+".cnf"
@@ -81,10 +84,21 @@ def prepare1(job):
       if "W" in version:
          proofstate(f_dat, f_pos, f_neg, hashing)
 
+   queue.put(f_dat)
+
 def prepare(rkeys, version, force=False, cores=1, hashing=None):
-   jobs = [rkey+(version,force,hashing) for rkey in rkeys]
    pool = Pool(cores)
-   res = pool.map_async(prepare1, jobs).get(365*24*3600)
+   m = Manager()
+   queue = m.Queue()
+   jobs = [rkey+(version,force,hashing,queue) for rkey in rkeys]
+   bar = Bar("[1/3]", max=len(jobs), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+   res = pool.map_async(prepare1, jobs, chunksize=1)
+   todo = len(jobs)
+   while todo:
+      queue.get()
+      todo -= 1
+      bar.next()
+   bar.finish()
    pool.close()
    pool.join()
 
@@ -106,6 +120,7 @@ def translate(f_cnf, f_conj, f_out):
 
 def make(rkeys, out=None, hashing=None):
    dat = []
+   bar = Bar("[2/3]", max=len(rkeys), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
    for (bid, pid, problem, limit) in rkeys:
       f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
       if out:
@@ -115,5 +130,7 @@ def make(rkeys, out=None, hashing=None):
             out.write("\n")
       else:
          dat.extend(open(f_dat).read().strip().split("\n"))
+      bar.next()
+   bar.finish()
    return dat if not out else None
 
