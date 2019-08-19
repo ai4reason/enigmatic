@@ -32,9 +32,9 @@ class LightGBMExt(LightGBM):
       with open(f_log) as file:
          for line in file:
             if line[0] == '[':
-               str = line.lstrip("[").split("]")[0]
-               if str.isdigit():
-                  cur = max(cur, int(str))
+               s = line.lstrip("[").split("]")[0]
+               if s.isdigit():
+                  cur = max(cur, int(s))
       return cur
 
 

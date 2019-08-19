@@ -26,17 +26,17 @@ def proofstate(f_dat, f_pos, f_neg, hashing=None):
       raise Exception("File %s does not match files %s and %s!" % (f_dat,f_pos,f_neg))
    open(f_dat, "w").write("\n".join(dat))
 
-#import traceback
-#
-#def prepare2(job):
-#   try:
-#      prepare1(job)
-#   except:
-#      print traceback.format_exc()
+import traceback
+
+def prepare2(job):
+   queue = job[7]
+   try:
+      prepare1(job)
+   except:
+      print("Error: "+traceback.format_exc())
+   queue.put(job[2])
 
 def prepare1(job):
-   print("run")
-   print(job)
    (bid,pid,problem,limit,version,force,hashing,queue) = job
 
    f_problem = expres.benchmarks.path(bid, problem)
@@ -84,7 +84,7 @@ def prepare1(job):
       if "W" in version:
          proofstate(f_dat, f_pos, f_neg, hashing)
 
-   queue.put(f_dat)
+   #queue.put(problem)
 
 def prepare(rkeys, version, force=False, cores=1, hashing=None):
    pool = Pool(cores)
@@ -92,7 +92,7 @@ def prepare(rkeys, version, force=False, cores=1, hashing=None):
    queue = m.Queue()
    jobs = [rkey+(version,force,hashing,queue) for rkey in rkeys]
    bar = Bar("[1/3]", max=len(jobs), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
-   res = pool.map_async(prepare1, jobs, chunksize=1)
+   res = pool.map_async(prepare2, jobs, chunksize=1)
    todo = len(jobs)
    while todo:
       queue.get()

@@ -114,7 +114,7 @@ def make(model, rkeys, settings):
       while done < cur:
          done += 1
          bar.next()
-      p.join(0.1)
+      p.join(1)
    while done < total:
       done += 1
       bar.next()
