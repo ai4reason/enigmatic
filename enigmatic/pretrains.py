@@ -3,6 +3,7 @@ from progress.bar import FillingSquaresBar as Bar
 import subprocess
 from pyprove import expres, eprover
 import os
+import traceback
 
 def proofstate(f_dat, f_pos, f_neg, hashing=None):
    def parse(clause):
@@ -25,8 +26,6 @@ def proofstate(f_dat, f_pos, f_neg, hashing=None):
    if i != len(dat):
       raise Exception("File %s does not match files %s and %s!" % (f_dat,f_pos,f_neg))
    open(f_dat, "w").write("\n".join(dat))
-
-import traceback
 
 def prepare2(job):
    queue = job[7]
@@ -84,14 +83,13 @@ def prepare1(job):
       if "W" in version:
          proofstate(f_dat, f_pos, f_neg, hashing)
 
-   #queue.put(problem)
-
 def prepare(rkeys, version, force=False, cores=1, hashing=None):
    pool = Pool(cores)
    m = Manager()
    queue = m.Queue()
    jobs = [rkey+(version,force,hashing,queue) for rkey in rkeys]
    bar = Bar("[1/3]", max=len(jobs), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+   bar.start()
    res = pool.map_async(prepare2, jobs, chunksize=1)
    todo = len(jobs)
    while todo:
@@ -121,6 +119,7 @@ def translate(f_cnf, f_conj, f_out):
 def make(rkeys, out=None, hashing=None):
    dat = []
    bar = Bar("[2/3]", max=len(rkeys), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+   bar.start()
    for (bid, pid, problem, limit) in rkeys:
       f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
       if out:

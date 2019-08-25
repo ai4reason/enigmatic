@@ -1,7 +1,6 @@
 import os
 import json
 from multiprocessing import Process
-from progress.bar import FillingSquaresBar as Bar
 
 from . import enigmap, pretrains, trains, protos
 from pyprove import expres, log
@@ -103,22 +102,23 @@ def make(model, rkeys, settings):
    log.msg("+ training %s model" % learner.name())
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,f_stats))
    p.start()
+   p.join()
 
    # wait and show progress bar 
-   total = learner.rounds()+1
-   bar = Bar("[3/3]", max=learner.rounds(), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
-   bar.next()
-   done = 1
-   while p.is_alive():
-      cur = learner.current(f_log)
-      while done < cur:
-         done += 1
-         bar.next()
-      p.join(1)
-   while done < total:
-      done += 1
-      bar.next()
-   bar.finish()
+   #total = learner.rounds()
+   #bar = Bar("[3/3]", max=learner.rounds(), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+   #bar.start()
+   #done = 0
+   #while p.is_alive():
+   #   cur = learner.current(f_log)
+   #   while done < cur:
+   #      done += 1
+   #      bar.next()
+   #   p.join(1)
+   #while done < total:
+   #   done += 1
+   #   bar.next()
+   #bar.finish()
 
    stats = json.load(open(f_stats)) if os.path.isfile(f_stats) else {}
    log.msg("+ training statistics:\n%s" % "\n".join(["                 : %s = %s"%(x,stats[x]) for x in sorted(stats)]))

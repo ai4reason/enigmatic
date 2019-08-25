@@ -2,6 +2,7 @@ import lightgbm as lgb
 import json
 from pyprove import log
 from .learner import Learner
+from progress.bar import FillingSquaresBar as Bar
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -27,7 +28,7 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      return "lgb-d%(num_round)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
+      return "lgb-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
 
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]
@@ -47,11 +48,17 @@ class LightGBM(Learner):
       stats["train.neg.count"] = int(neg)
       
       self.params["scale_pos_weight"] = (neg/pos)
-      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain])
+      bar = Bar("[3/3]", max=self.params["num_round"], suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
+      bar.start()
+      redir = log.redirect_start(f_log, bar)
+
+      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=[lambda _: bar.next()])
+      
+      log.redirect_finish(*redir)
+      print()
       bst.save_model(f_mod)
       bst.free_dataset()
       bst.free_network()
 
-      if f_stats:
-         json.dump(stats, open(f_stats,"w"))
+      return stats
 
