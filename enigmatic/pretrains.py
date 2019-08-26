@@ -39,7 +39,7 @@ def prepare1(job):
    (bid,pid,problem,limit,version,force,hashing,queue) = job
 
    f_problem = expres.benchmarks.path(bid, problem)
-   f_cnf = expres.benchmarks.path(bid, "."+problem)+".cnf"
+   f_cnf = expres.benchmarks.path(os.path.join(bid,"cnf"), problem)
    if not os.path.isfile(f_cnf):
       open(f_cnf, "w").write(eprover.runner.cnf(f_problem))
 
