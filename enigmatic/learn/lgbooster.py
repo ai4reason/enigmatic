@@ -1,6 +1,6 @@
 import lightgbm as lgb
 import json
-from pyprove import log
+from pyprove import log, stdredirect
 from .learner import Learner
 from progress.bar import FillingSquaresBar as Bar
 
@@ -50,11 +50,10 @@ class LightGBM(Learner):
       self.params["scale_pos_weight"] = (neg/pos)
       bar = Bar("[3/3]", max=self.params["num_round"], suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
       bar.start()
-      redir = log.redirect_start(f_log, bar)
-
+      redir = stdredirect.start(f_log, bar)
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=[lambda _: bar.next()])
-      
-      log.redirect_finish(*redir)
+      bar.finish() 
+      stdredirect.finish(*redir)
       print()
       bst.save_model(f_mod)
       bst.free_dataset()
