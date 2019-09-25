@@ -12,18 +12,18 @@ def proofstate(f_dat, f_pos, f_neg, hashing=None):
       else:
          clause = ["%s:%s"%tuple(x) for x in clause if x]
       return " ".join(clause)
-   dat = file(f_dat).read().strip().split("\n")
+   dat = open(f_dat).read().strip().split("\n")
    dat = [x for x in dat if x]
    i = 0
-   for pos in file(f_pos):
+   for pos in open(f_pos):
       dat[i] += " "+parse(pos)
       i += 1
-   for neg in file(f_neg):
+   for neg in open(f_neg):
       dat[i] += " "+parse(neg)
       i += 1
    if i != len(dat):
       raise Exception("File %s does not match files %s and %s!" % (f_dat,f_pos,f_neg))
-   file(f_dat, "w").write("\n".join(dat))
+   open(f_dat, "w").write("\n".join(dat))
 
 #import traceback
 #
@@ -39,7 +39,7 @@ def prepare1(job):
    f_problem = expres.benchmarks.path(bid, problem)
    f_cnf = expres.benchmarks.path(bid, "."+problem)+".cnf"
    if not os.path.isfile(f_cnf):
-      file(f_cnf, "w").write(eprover.runner.cnf(f_problem))
+      open(f_cnf, "w").write(eprover.runner.cnf(f_problem))
 
    result = None
    #result = rkeys[(bid,pid,problem,limit)]
@@ -50,14 +50,14 @@ def prepare1(job):
    if force or (not (os.path.isfile(f_pos) and os.path.isfile(f_neg))):
       result = expres.results.load(bid, pid, problem, limit, trains=True, proof=True)
       if force or not os.path.isfile(f_pos):
-         file(f_pos, "w").write("\n".join(result["POS"]))
+         open(f_pos, "w").write("\n".join(result["POS"]))
       if force or not os.path.isfile(f_neg):
-         file(f_neg, "w").write("\n".join(result["NEG"]))
+         open(f_neg, "w").write("\n".join(result["NEG"]))
       # extract additional positive samples from the proof
       #f_sol = expres.results.path(bid, pid, problem, limit, ext="sol")
-      #file(f_sol, "w").write("\n".join(result["PROOF"]))
+      #open(f_sol, "w").write("\n".join(result["PROOF"]))
       #f_prf = expres.results.path(bid, pid, problem, limit, ext="prf")
-      #prf = file(f_prf, "w")
+      #prf = open(f_prf, "w")
       #subprocess.call(["eprover", "--free-numbers", "--cnf", f_sol], stdout=prf)
       ##subprocess.call(["eprover", "--free-numbers", "--cnf", "--no-preprocessing", f_sol], stdout=prf)
       #prf.close()
@@ -68,7 +68,7 @@ def prepare1(job):
    os.system("mkdir -p %s" % os.path.dirname(f_dat))
    os.system("mkdir -p %s" % os.path.dirname(f_map))
    if force or not os.path.isfile(f_dat):
-      out = file(f_dat, "w")
+      out = open(f_dat, "w")
       if not hashing:
          subprocess.call(["enigma-features", "--free-numbers", "--enigma-features=%s"%version, \
             f_pos, f_neg, f_cnf], stdout=out)
@@ -91,7 +91,7 @@ def prepare(rkeys, version, force=False, cores=1, hashing=None):
 def translate(f_cnf, f_conj, f_out):
    "deprecated?"
 
-   out = file(f_out, "w")
+   out = open(f_out, "w")
    if not f_conj:
       subprocess.call(["enigma-features", "--free-numbers", f_cnf], stdout=out)
    else:   
@@ -109,11 +109,11 @@ def make(rkeys, out=None, hashing=None):
    for (bid, pid, problem, limit) in rkeys:
       f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
       if out:
-         tmp = file(f_dat).read().strip()
+         tmp = open(f_dat).read().strip()
          if tmp:
             out.write(tmp)
             out.write("\n")
       else:
-         dat.extend(file(f_dat).read().strip().split("\n"))
+         dat.extend(open(f_dat).read().strip().split("\n"))
    return dat if not out else None
 

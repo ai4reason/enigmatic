@@ -5,7 +5,7 @@ import json
 from enigmatic.learn import LightGBM
 
 if len(sys.argv) != 5:
-   print "usage: %s train.in model.out train.stats {json params}" % sys.argv[0]
+   print("usage: %s train.in model.out train.stats {json params}" % sys.argv[0])
    sys.exit()
 
 f_in = sys.argv[1]

@@ -83,8 +83,8 @@ def boost(f_in, f_out, out, method="WRONG:POS"):
       raise Exception("Unknown boost method (%s)")
    CLS = BOOSTS[method]
 
-   ins = file(f_in).read().strip().split("\n")
-   outs = file(f_out).read().strip().split("\n")
+   ins = open(f_in).read().strip().split("\n")
+   outs = open(f_out).read().strip().split("\n")
 
    for (correct,predicted) in zip(ins,outs):
       out.write(correct)

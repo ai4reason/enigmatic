@@ -7,7 +7,7 @@ PERF = []
 def train(f_in, f_mod, f_out=None, f_log=None):
    if f_log:
       subprocess.call(PERF+["train", "-s" , "2", f_in, f_mod], \
-         stdout=file(f_log, "a"), stderr=subprocess.STDOUT)
+         stdout=open(f_log, "a"), stderr=subprocess.STDOUT)
    else:
       subprocess.call(["train", "-s" , "2", f_in, f_mod])
 
@@ -17,16 +17,16 @@ def train(f_in, f_mod, f_out=None, f_log=None):
 def predict(f_in, f_mod, f_out, f_log):
    if f_log:
       subprocess.call(PERF+["predict", f_in, f_mod, f_out], \
-         stdout=file(f_log, "a"), stderr=subprocess.STDOUT)
+         stdout=open(f_log, "a"), stderr=subprocess.STDOUT)
    else:
       subprocess.call(["predict", f_in, f_mod, f_out])
 
 def stats(f_in, f_out):
-   ins = file(f_in).read().strip().split("\n")
+   ins = open(f_in).read().strip().split("\n")
    ins = [int(x.split()[0]) for x in ins]
 
-   outs = file(f_out).read().strip().split("\n")
-   outs = map(int, outs)
+   outs = open(f_out).read().strip().split("\n")
+   outs = list(map(int, outs))
 
    stat = {}
    stat["COUNT"] = 0
@@ -67,7 +67,7 @@ def stats(f_in, f_out):
 
 def load(f_mod, f_map):
    emap = enigmap.load(f_map)
-   lines = file(f_mod)
+   lines = open(f_mod)
    rev = {emap[ftr]:ftr for ftr in emap}
 
    header = {}
@@ -103,7 +103,7 @@ def load(f_mod, f_map):
 
 def save(header, w1, w2, emap, f_mod):
    rev = {emap[ftr]:ftr for ftr in emap}
-   lines = file(f_mod, "w")
+   lines = open(f_mod, "w")
 
    info = lambda key: lines.write("%s %s\n" % (key, header[key]))
    info("solver_type")
@@ -113,13 +113,13 @@ def save(header, w1, w2, emap, f_mod):
    info("bias")
    lines.write("w\n")
 
-   for i in xrange(1,len(rev)+1):
+   for i in range(1,len(rev)+1):
       if rev[i] in w1 and w1[rev[i]] != 0:
          lines.write("%.16f\n"%w1[rev[i]])
       else:
          lines.write("0\n")
    
-   for i in xrange(1,len(rev)+1):
+   for i in range(1,len(rev)+1):
       if rev[i] in w2 and w2[rev[i]] != 0:
          lines.write("%.16f\n"%w2[rev[i]])
       else:

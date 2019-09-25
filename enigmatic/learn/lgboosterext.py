@@ -34,7 +34,7 @@ class LightGBMExt(Learner):
       return "%s(%s)" % (self.name(), args)
 
    def train(self, f_in, f_mod, f_log=None, f_stats=None):
-      out = file(f_log, "a")
+      out = open(f_log, "a")
       subprocess.call([BOOSTER_BIN, f_in, f_mod, f_stats, json.dumps(self.params)],
          stdout=out, stderr=subprocess.STDOUT)
       out.close()
