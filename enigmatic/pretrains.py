@@ -57,9 +57,9 @@ def prepare1(job):
          open(f_neg, "w").write("\n".join(result["NEG"]))
       # extract additional positive samples from the proof
       #f_sol = expres.results.path(bid, pid, problem, limit, ext="sol")
-      #file(f_sol, "w").write("\n".join(result["PROOF"]))
+      #open(f_sol, "w").write("\n".join(result["PROOF"]))
       #f_prf = expres.results.path(bid, pid, problem, limit, ext="prf")
-      #prf = file(f_prf, "w")
+      #prf = open(f_prf, "w")
       #subprocess.call(["eprover", "--free-numbers", "--cnf", f_sol], stdout=prf)
       ##subprocess.call(["eprover", "--free-numbers", "--cnf", "--no-preprocessing", f_sol], stdout=prf)
       #prf.close()
