@@ -41,7 +41,7 @@ def prepare1(job):
    f_problem = expres.benchmarks.path(bid, problem)
    f_cnf = expres.benchmarks.path(os.path.join(bid,"cnf"), problem)
    if not os.path.isfile(f_cnf):
-      open(f_cnf, "w").write(eprover.runner.cnf(f_problem))
+      open(f_cnf, "wb").write(eprover.runner.cnf(f_problem))
 
    result = None
    #result = rkeys[(bid,pid,problem,limit)]
