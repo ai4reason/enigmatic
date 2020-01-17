@@ -6,9 +6,9 @@ from pyprove.bar import ProgressBar # FillingSquaresBar as Bar
 
 DEFAULTS = {
    'max_depth': 9, 
-   'learning_rate': 0.3, 
+   'learning_rate': 0.2, 
    'objective': 'binary', 
-   'num_round': 200,
+   'num_round': 150,
    'num_leaves': 300
 }
 
@@ -36,6 +36,9 @@ class LightGBM(Learner):
       return "%s(%s)" % (self.name(), args)
 
    def train(self, f_in, f_mod, f_log=None, f_stats=None):
+      bar = ProgressBar("[3/3]", max=self.params["num_round"])
+      bar.start()
+      redir = redirect.start(f_log, bar)
       stats = {}
 
       dtrain = lgb.Dataset(f_in)
@@ -43,21 +46,18 @@ class LightGBM(Learner):
       labels = dtrain.get_label()
       pos = float(len([x for x in labels if x == 1]))
       neg = float(len([x for x in labels if x == 0]))
-
       stats["train.pos.count"] = int(pos)
       stats["train.neg.count"] = int(neg)
-      
       self.params["scale_pos_weight"] = (neg/pos)
-      bar = ProgressBar("[3/3]", max=self.params["num_round"])
-      bar.start()
-      redir = redirect.start(f_log, bar)
+
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=[lambda _: bar.next()])
-      bar.finish() 
-      redirect.finish(*redir)
-      print()
       bst.save_model(f_mod)
       bst.free_dataset()
       bst.free_network()
+
+      bar.finish() 
+      redirect.finish(*redir)
+      print()
 
       return stats
 
