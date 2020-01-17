@@ -1,7 +1,6 @@
+import re
 import xgboost as xgb
 from .learner import Learner
-from pyprove import log, redirect
-from pyprove.bar import ProgressBar
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -13,6 +12,7 @@ DEFAULTS = {
 class XGBoost(Learner):
 
    def __init__(self, **args):
+      Learner.__init__(self)
       self.params = dict(DEFAULTS)
       self.params.update(args)
       self.num_round = self.params["num_round"]
@@ -35,23 +35,28 @@ class XGBoost(Learner):
       args = ", ".join(args)
       return "%s(%s, num_round=%s)" % (self.name(), args, self.num_round)
 
-   def train(self, f_in, f_mod, f_log=None, f_stats=None):
-      bar = ProgressBar("[3/3]", max=self.num_round)
-      bar.start()
-      redir = redirect.start(f_log, bar)
+   def readlog(self, f_log):
+      losses = re.findall(r'\[(\d*)\].*error:(\d*.\d*)', open(f_log).read())
+      if not losses:
+         self.stats["model.loss"] = "error"
+         return
+      losses = {int(x): float(y) for (x,y) in losses}
+      last = max(losses)
+      best = min(losses, key=lambda x: losses[x])
+      self.stats["model.loss.last"] = "%f [%s]" % (losses[last], last)
+      self.stats["model.loss.best"] = "%f [%s]" % (losses[best], best)
 
+   def train(self, f_in, f_mod, iter_done=lambda x: x):
       dtrain = xgb.DMatrix(f_in)
       labels = dtrain.get_label()
       pos = float(len([x for x in labels if x == 1]))
       neg = float(len([x for x in labels if x == 0]))
+      self.stats["train.count"] = len(labels)
+      self.stats["train.count.pos"] = int(pos)
+      self.stats["train.count.neg"] = int(neg)
       self.params["scale_pos_weight"] = (neg/pos)
       
-      bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")], callbacks=[lambda _: bar.next()])
+      bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")], callbacks=[lambda _: iter_done()])
       bst.save_model(f_mod)
-
-      bar.finish() 
-      redirect.finish(*redir)
-      print()
-      
       return bst
 

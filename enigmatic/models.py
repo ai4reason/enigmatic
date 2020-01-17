@@ -121,7 +121,7 @@ def make(model, rkeys, settings):
    #bar.finish()
 
    stats = json.load(open(f_stats)) if os.path.isfile(f_stats) else {}
-   log.msg("+ training statistics:\n%s" % "\n".join(["                 : %s = %s"%(x,stats[x]) for x in sorted(stats)]))
+   log.msg("+ training statistics:\n%s" % "\n".join(["%-23s = %s"%(x,stats[x]) for x in sorted(stats)]))
 
    if settings["gzip"]:
       log.msg("+ compressing training files")
