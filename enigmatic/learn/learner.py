@@ -3,6 +3,7 @@
 import sys
 import os.path
 import json
+import time
 
 from pyprove import log, redirect
 from pyprove.bar import ProgressBar
@@ -43,7 +44,10 @@ class Learner:
       if f_log:
          redir = redirect.start(f_log, bar)
 
+      begin = time.time()
       ret = self.train(f_in, f_mod, iter_done=bar.next)
+      end = time.time()
+      self.stats["model.traintime"] = log.humantime(end-begin)
       self.stats["train.size"] = log.humanbytes(os.path.getsize(f_in))
       self.stats["model.size"] = log.humanbytes(os.path.getsize(f_mod))
 

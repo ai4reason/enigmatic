@@ -1,6 +1,7 @@
 import re
 import xgboost as xgb
 from .learner import Learner
+from pyprove import log
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -43,17 +44,17 @@ class XGBoost(Learner):
       losses = {int(x): float(y) for (x,y) in losses}
       last = max(losses)
       best = min(losses, key=lambda x: losses[x])
-      self.stats["model.loss.last"] = "%f [%s]" % (losses[last], last)
-      self.stats["model.loss.best"] = "%f [%s]" % (losses[best], best)
+      self.stats["model.loss.last"] = "%f [iter %s]" % (losses[last], last)
+      self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
 
    def train(self, f_in, f_mod, iter_done=lambda x: x):
       dtrain = xgb.DMatrix(f_in)
       labels = dtrain.get_label()
       pos = float(len([x for x in labels if x == 1]))
       neg = float(len([x for x in labels if x == 0]))
-      self.stats["train.count"] = len(labels)
-      self.stats["train.count.pos"] = int(pos)
-      self.stats["train.count.neg"] = int(neg)
+      self.stats["train.count"] = log.humanint(len(labels))
+      self.stats["train.count.pos"] = log.humanint(pos)
+      self.stats["train.count.neg"] = log.humanint(neg)
       self.params["scale_pos_weight"] = (neg/pos)
       
       bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")], callbacks=[lambda _: iter_done()])
