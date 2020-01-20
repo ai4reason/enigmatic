@@ -29,7 +29,7 @@ class XGBoost(Learner):
       return "XGBoost"
    
    def desc(self):
-      return "xgb-d%(max_depth)s-e%(eta)s" % self.params
+      return ("xgb-t%d-"%self.num_round) + ("d%(max_depth)s-e%(eta)s"%self.params)
 
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]

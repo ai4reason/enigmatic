@@ -29,7 +29,7 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      return "lgb-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
+      return "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
 
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]

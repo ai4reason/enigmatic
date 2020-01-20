@@ -30,7 +30,8 @@ def path(model, filemodel=None):
 
 
 def name(bid, limit, ref, version, learner, hashing, **others):
-   return "%s-%s/%s-%s/%s" % (bid.replace("/","-"), limit, ref, version, learner.desc())
+   modelname = others["modelname"] if "modelname" in others else ref
+   return "%s-%s/%s-%s%s/%s" % (bid.replace("/","-"), limit, modelname, version, log.humanexp(hashing),learner.desc())
 
 def collect(model, rkeys, settings):
    version = settings["version"]
@@ -104,24 +105,8 @@ def make(model, rkeys, settings):
    p.start()
    p.join()
 
-   # wait and show progress bar 
-   #total = learner.rounds()
-   #bar = Bar("[3/3]", max=learner.rounds(), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
-   #bar.start()
-   #done = 0
-   #while p.is_alive():
-   #   cur = learner.current(f_log)
-   #   while done < cur:
-   #      done += 1
-   #      bar.next()
-   #   p.join(1)
-   #while done < total:
-   #   done += 1
-   #   bar.next()
-   #bar.finish()
-
    stats = json.load(open(f_stats)) if os.path.isfile(f_stats) else {}
-   log.msg("+ training statistics:\n%s" % "\n".join(["%-23s = %s"%(x,stats[x]) for x in sorted(stats)]))
+   log.mapping(stats, "+ training statistics:")
 
    if settings["gzip"]:
       log.msg("+ compressing training files")
