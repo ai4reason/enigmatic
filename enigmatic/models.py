@@ -44,7 +44,7 @@ def collect(model, rkeys, settings):
       log.msg("+ extracting training data from results")
       pretrains.prepare(rkeys, version, force, cores, hashing)
       log.msg("+ collecting %s data" % ("training" if hashing else "pretrains"))
-      pretrains.make(rkeys, out=open(f_dat, "w"), hashing=hashing)
+      pretrains.make(rkeys, out=open(f_dat, "w"), hashing=hashing, version=version)
 
 
 def setup(model, rkeys, settings):

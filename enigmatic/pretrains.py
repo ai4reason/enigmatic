@@ -4,6 +4,20 @@ import subprocess
 from pyprove import expres, eprover
 import os
 import traceback
+from pyprove import log
+
+TRAINS_DIR = os.getenv("EXPRES_TRAINS", "./00TRAINS")
+RAMDISK_DIR = None
+
+def path(bid, pid, problem, limit, version, hashing, ext="out"):
+   tid = bid.replace("/","-")
+   tid += "-%s%s" % ("T" if isinstance(limit,int) else "", limit)
+   vid = "%s%s" % (version, log.humanexp(hashing))
+   f_out = "%s.%s" % (problem, ext)
+   f = os.path.join(TRAINS_DIR, tid, vid, f_out)
+   if RAMDISK_DIR and not os.path.isfile(f):
+      f = os.path.join(RAMDISK_DIR, tid, vid, f_out)
+   return f
 
 def proofstate(f_dat, f_pos, f_neg, hashing=None):
    def parse(clause):
@@ -65,8 +79,10 @@ def prepare1(job):
       #prf.close()
       #os.system("cat %s | grep '^cnf' >> %s" % (f_prf, f_pos))
    
-   f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
-   f_map = expres.results.path(bid, pid, problem, limit, ext="map")
+   #f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
+   f_dat = path(bid, pid, problem, limit, version, hashing, ext="in" if hashing else "pre")
+   #f_map = expres.results.path(bid, pid, problem, limit, ext="map")
+   f_map = path(bid, pid, problem, limit, version, hashing, ext="map")
    os.system("mkdir -p %s" % os.path.dirname(f_dat))
    os.system("mkdir -p %s" % os.path.dirname(f_map))
    if force or not os.path.isfile(f_dat):
@@ -116,12 +132,13 @@ def translate(f_cnf, f_conj, f_out):
       os.system("rm -fr %s" % f_empty)
    out.close()
 
-def make(rkeys, out=None, hashing=None):
+def make(rkeys, out=None, hashing=None, version=None):
    dat = []
    bar = Bar("[2/3]", max=len(rkeys), suffix="%(percent).1f%% / %(elapsed_td)s / ETA %(eta_td)s")
    bar.start()
    for (bid, pid, problem, limit) in rkeys:
-      f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
+      #f_dat = expres.results.path(bid, pid, problem, limit, ext="in" if hashing else "pre")
+      f_dat = path(bid, pid, problem, limit, version, hashing, ext="in" if hashing else "pre")
       if out:
          tmp = open(f_dat).read().strip()
          if tmp:
