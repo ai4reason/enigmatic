@@ -77,12 +77,12 @@ def setup(model, rkeys, settings):
    return emap if not hashing else hashing
 
 
-def make(model, rkeys, settings):
+def make(model, rkeys, settings, train_in=None):
    
    learner = settings["learner"]
 
    f_pre   = path(model, "train.pre")
-   f_in    = path(model, "train.in")
+   f_in    = train_in if train_in else path(model, "train.in")
    f_stats = path(model, "train.stats")
    f_mod   = path(model, "model.%s" % learner.ext())
    f_log   = path(model, "train.log")
@@ -135,6 +135,14 @@ def update(results, only=None, **others):
       others["pids"] = only
    results.update(expres.benchmarks.eval(**others))
 
+def strats(model, learner, ref, **others):
+   efun = learner.efun()
+   new = [
+      protos.solo(ref, model, mult=0, noinit=True, efun=efun),
+      protos.coop(ref, model, mult=0, noinit=True, efun=efun)
+   ]
+   return new
+
 def loop(model, settings, nick=None):
    global RAMDISK_DIR
 
@@ -152,11 +160,7 @@ def loop(model, settings, nick=None):
    update(**settings)
    if not make(model, settings["results"], settings):
       raise Exception("Enigma: FAILED: Building model %s" % model)
-   efun = settings["learner"].efun()
-   new = [
-      protos.solo(settings["pids"][0], model, mult=0, noinit=True, efun=efun),
-      protos.coop(settings["pids"][0], model, mult=0, noinit=True, efun=efun)
-   ]
+   new = strats(model, **settings)
    settings["pids"].extend(new)
 
    if settings["ramdisk"]:

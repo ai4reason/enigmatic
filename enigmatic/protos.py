@@ -14,7 +14,7 @@ def solo(pid, name, mult=0, noinit=False, efun="Enigma", fullname=False):
          post += "No" 
       epid = "Enigma+%s+%s+%s" % (name.replace("/","+"), pid, post)
    else:
-      epid = "Enigma+%s+solo" % name.replace("/","+")
+      epid = "Enigma+%s+solo-%s" % (name.replace("/","+"), pid)
    expres.protos.save(epid, eproto)
    return epid
 
@@ -36,7 +36,7 @@ def coop(pid, name, freq=None, mult=0, noinit=False, efun="Enigma", fullname=Fal
          post += "No"
       epid = "Enigma+%s+%s+%s" % (name.replace("/","+"), pid, post)
    else:
-      epid = "Enigma+%s+coop" % name.replace("/","+")
+      epid = "Enigma+%s+coop-%s" % (name.replace("/","+"), pid)
    expres.protos.save(epid, eproto)
    return epid
 
