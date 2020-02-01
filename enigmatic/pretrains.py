@@ -14,9 +14,9 @@ def path(bid, pid, problem, limit, version, hashing, ext="out"):
    tid += "-%s%s" % ("T" if isinstance(limit,int) else "", limit)
    vid = "%s%s" % (version, log.humanexp(hashing))
    f_out = "%s.%s" % (problem, ext)
-   f = os.path.join(TRAINS_DIR, tid, vid, f_out)
+   f = os.path.join(TRAINS_DIR, tid, vid, pid, f_out)
    if RAMDISK_DIR and not os.path.isfile(f):
-      f = os.path.join(RAMDISK_DIR, tid, vid, f_out)
+      f = os.path.join(RAMDISK_DIR, tid, vid, pid, f_out)
    return f
 
 def proofstate(f_dat, f_pos, f_neg, hashing=None):
