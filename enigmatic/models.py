@@ -140,10 +140,10 @@ def strats(model, learner, ref, refs=None, **others):
    efun = learner.efun()
    new = []
    for ref in refs:
-   new.extend([
-      protos.solo(ref, model, mult=0, noinit=True, efun=efun),
-      protos.coop(ref, model, mult=0, noinit=True, efun=efun)
-   ])
+      new.extend([
+         protos.solo(ref, model, mult=0, noinit=True, efun=efun),
+         protos.coop(ref, model, mult=0, noinit=True, efun=efun)
+      ])
    return new
 
 def loop(model, settings, nick=None):
