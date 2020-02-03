@@ -135,12 +135,15 @@ def update(results, only=None, **others):
       others["pids"] = only
    results.update(expres.benchmarks.eval(**others))
 
-def strats(model, learner, ref, **others):
+def strats(model, learner, ref, refs=None, **others):
+   refs = [ref] if not refs else refs
    efun = learner.efun()
-   new = [
+   new = []
+   for ref in refs:
+   new.extend([
       protos.solo(ref, model, mult=0, noinit=True, efun=efun),
       protos.coop(ref, model, mult=0, noinit=True, efun=efun)
-   ]
+   ])
    return new
 
 def loop(model, settings, nick=None):
