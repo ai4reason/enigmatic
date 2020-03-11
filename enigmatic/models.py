@@ -101,7 +101,7 @@ def make(model, rkeys, settings, train_in=None):
          trains.make(open(f_pre), emap, out=open(f_in, "w"))
 
    log.msg("+ training %s model" % learner.name())
-   p = Process(target=learner.build, args=(f_in,f_mod,f_log,f_stats))
+   p = Process(target=learner.build, args=(model,f_in,f_mod,f_log,f_stats))
    p.start()
    p.join()
 

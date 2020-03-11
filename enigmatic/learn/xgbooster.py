@@ -13,9 +13,9 @@ DEFAULTS = {
 class XGBoost(Learner):
 
    def __init__(self, **args):
-      Learner.__init__(self)
       self.params = dict(DEFAULTS)
       self.params.update(args)
+      Learner.__init__(self, self.params["num_round"])
       self.num_round = self.params["num_round"]
       del self.params["num_round"]
 

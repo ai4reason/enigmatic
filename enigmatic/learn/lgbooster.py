@@ -14,10 +14,9 @@ DEFAULTS = {
 class LightGBM(Learner):
 
    def __init__(self, **args):
-      Learner.__init__(self)
       self.params = dict(DEFAULTS)
       self.params.update(args)
-      self.num_round = self.params["num_round"]
+      Learner.__init__(self, self.params["num_round"])
 
    def efun(self):
       return "EnigmaLgb"
@@ -29,7 +28,7 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      return "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
+      return "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate).2f" % self.params
 
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]
@@ -47,7 +46,7 @@ class LightGBM(Learner):
       self.stats["model.loss.last"] = "%f [iter %s]" % (losses[last], last)
       self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
 
-   def train(self, f_in, f_mod, iter_done=lambda x: x):
+   def train(self, f_in, f_mod, iter_done=None):
       dtrain = lgb.Dataset(f_in)
       dtrain.construct()
       labels = dtrain.get_label()
@@ -58,7 +57,8 @@ class LightGBM(Learner):
       self.stats["train.count.neg"] = log.humanint(neg)
       self.params["scale_pos_weight"] = (neg/pos)
 
-      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=[lambda _: iter_done()])
+      callbacks = [lambda _: iter_done()] if iter_done else None
+      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=callbacks)
       bst.save_model(f_mod)
       bst.free_dataset()
       bst.free_network()
