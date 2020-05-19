@@ -38,7 +38,7 @@ def dirpath(bid, pid, limit, version, hashing):
 
 def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
    args = [
-       "enigma-features", 
+      "enigma-features", 
       "--free-numbers", 
       "--enigma-features=%s" % version,
       "--feature-hashing=%s" % hashing
@@ -79,23 +79,25 @@ def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=Non
 
    return ret
 
-def make(d_outs, bid, version, hashing, out=None, cores=4):
+def make(d_outs, bid, version, hashing, out, cores=4, **others):
    
    def save(arg, res, bar):
       nonlocal out
       (xs0, ys0) = res
       dump_svmlight_file(xs0, ys0, out)
 
-   callback = save
+   callback = save if out else None
+   rets = []
    for (n,d_out) in enumerate(d_outs):
       msg = "[%s/%s]" % (n+1, len(d_outs))
-      makedir(d_out, bid, version, hashing, cores, callback, msg)
-   
-   return (xs, ys) if not out else None
+      ret = makedir(d_out, bid, version, hashing, cores, callback, msg)
+      if not out:
+         rets.extend(ret)
+
+   return rets
 
 def build(bid, pids, limit, version, hashing, cores, out=None, **others):
-
-
+   pass
 
 
 
