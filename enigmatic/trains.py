@@ -52,9 +52,9 @@ def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
       out = e.output
    if f_in:
       with open(f_in, "wb") as f: f.write(out)
-   with io.BytesIO(out) as data:
-      (xs, ys) = load_svmlight_file(data)
-   return (xs, ys)
+   #with io.BytesIO(out) as data:
+   #   (xs, ys) = load_svmlight_file(data)
+   return out
 
    
 def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=None):
@@ -75,7 +75,7 @@ def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=Non
    pos = select("pos")
    neg = select("neg")
    jobs = [job(p) for p in pos if p in neg]
-   ret = par.apply(makeone, jobs, cores=cores, barmsg=msg, callback=callback)
+   ret = par.apply(makeone, jobs, cores=cores, barmsg=msg, callback=callback, chunksize=100)
 
    return ret
 
@@ -83,8 +83,9 @@ def make(d_outs, bid, version, hashing, out, cores=4, **others):
    
    def save(arg, res, bar):
       nonlocal out
-      (xs0, ys0) = res
-      dump_svmlight_file(xs0, ys0, out)
+      #(xs0, ys0) = res
+      #dump_svmlight_file(xs0, ys0, out)
+      out.write(res)
 
    callback = save if out else None
    rets = []
