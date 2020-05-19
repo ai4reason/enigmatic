@@ -2,11 +2,16 @@ import os
 import json
 from multiprocessing import Process
 
-from . import enigmap, pretrains, trains, protos
+from . import enigmap, trains, protos
 from pyprove import expres, log
+from pyprove.tools import ramdisk
+from . import models as self
 
-ENIGMA_ROOT = os.getenv("ENIGMA_ROOT", "./Enigma")
+DEFAULT_NAME = "Enigma"
+DEFAULT_DIR = os.getenv("ENIGMA_ROOT", DEFAULT_NAME)
 RAMDISK_DIR = None
+
+#ENIGMA_ROOT = os.getenv("ENIGMA_ROOT", "./Enigma") # todel
 
 DEFAULTS = {
    "gzip": True,
@@ -23,7 +28,7 @@ def path(model, filemodel=None):
    def add(f):
       return f if not filemodel else os.path.join(f, filemodel)
       
-   f = add(os.path.join(ENIGMA_ROOT, model))
+   f = add(os.path.join(DEFAULT_DIR, model))
    if RAMDISK_DIR and not os.path.isfile(f):
       f = add(os.path.join(RAMDISK_DIR, model))
    return f
@@ -75,6 +80,15 @@ def setup(model, rkeys, settings):
          emap = enigmap.load(f_map)
 
    return emap if not hashing else hashing
+
+# TODO: finish - remove old non-hashing stuff
+def build(model, f_in, learner):
+   log.msg("+ training %s model" % learner.name())
+   f_mod   = path(model, "model.%s" % learner.ext())
+   f_stats = path(model, "train.stats")
+   p = Process(target=learner.build, args=(model,f_in,f_mod,f_log,f_stats))
+   p.start()
+   p.join()
 
 
 def make(model, rkeys, settings, train_in=None):
@@ -147,18 +161,21 @@ def strats(model, learner, ref, refs=None, **others):
    return new
 
 def loop(model, settings, nick=None):
-   global RAMDISK_DIR
 
    check(settings)
    if nick:
       model = "%s/%s" % (model, nick)
    log.msg("Building model %s" % model)
 
-   if settings["ramdisk"]:
-      RAMDISK_DIR = os.path.join(settings["ramdisk"], "Enigma")
-      os.system("mkdir -p %s" % RAMDISK_DIR)
-      expres.results.RAMDISK_DIR = os.path.join(settings["ramdisk"], "00RESULTS")
-      os.system("mkdir -p %s" % expres.results.RAMDISK_DIR)
+   ramdisk.open(self, envar="ENIGMA_ROOT", **settings)
+   ramdisk.open(expres.results, **settings)
+   ramdisk.open(pretrains, **settings)
+
+   #if settings["ramdisk"]:
+   #   RAMDISK_DIR = os.path.join(settings["ramdisk"], "Enigma")
+   #   os.system("mkdir -p %s" % RAMDISK_DIR)
+   #   expres.results.RAMDISK_DIR = os.path.join(settings["ramdisk"], "00RESULTS")
+   #   os.system("mkdir -p %s" % expres.results.RAMDISK_DIR)
 
    update(**settings)
    if not make(model, settings["results"], settings):
@@ -166,19 +183,23 @@ def loop(model, settings, nick=None):
    new = strats(model, **settings)
    settings["pids"].extend(new)
 
-   if settings["ramdisk"]:
-      os.system("mkdir -p %s" % ENIGMA_ROOT)
-      os.system("cp -rf %s/* %s" % (RAMDISK_DIR, ENIGMA_ROOT))
-      os.system("rm -fr %s" % RAMDISK_DIR)
-      RAMDISK_DIR = None
+   #if settings["ramdisk"]:
+   #   os.system("mkdir -p %s" % ENIGMA_ROOT)
+   #   os.system("cp -rf %s/* %s" % (RAMDISK_DIR, ENIGMA_ROOT))
+   #   os.system("rm -fr %s" % RAMDISK_DIR)
+   #   RAMDISK_DIR = None
    
    update(only=new, **settings)
 
-   if settings["ramdisk"]:
-      os.system("mkdir -p %s" % expres.results.RESULTS_DIR)
-      os.system("cp -rf %s/* %s" % (expres.results.RAMDISK_DIR, expres.results.RESULTS_DIR))
-      os.system("rm -fr %s" % expres.results.RAMDISK_DIR)
-      expres.results.RAMDISK_DIR = None
+   ramdisk.close(self, envvar="ENIGMA_ROOT")
+   ramdisk.close(expres.results)
+   ramdisk.close(pretrains)
+
+   #if settings["ramdisk"]:
+   #   os.system("mkdir -p %s" % expres.results.RESULTS_DIR)
+   #   os.system("cp -rf %s/* %s" % (expres.results.RAMDISK_DIR, expres.results.RESULTS_DIR))
+   #   os.system("rm -fr %s" % expres.results.RAMDISK_DIR)
+   #   expres.results.RAMDISK_DIR = None
    
    log.msg("Building model finished\n")
    return new

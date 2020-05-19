@@ -4,7 +4,7 @@ import json
 from multiprocessing import Process
 import sherpa
 
-from . import LightGBM
+from .lgbooster import LightGBM
 from enigmatic import models, protos
 from pyprove import log, expres, eprover
 
@@ -35,8 +35,10 @@ class AutoTuneLgb(LightGBM):
       return "AutoTuneLgb-t%s" % self.tunetime
 
    def observe(self, param, model, ref, **crossval):
+      print("observing")
       param["num_leaves"] = int(param["num_leaves"])
       param["max_depth"] = int(param["max_depth"])
+      print(param)
       learner = LightGBM(**param)
       learner.nobar()
       model0 = "%s/tuning/%s" % (model, learner.desc())
@@ -47,12 +49,14 @@ class AutoTuneLgb(LightGBM):
       d_model0 = models.path(model0)
       os.system("mkdir -p %s" % d_model0)
       os.system("cp %s/enigma.map %s" % (models.path(model), d_model0))
-     
+
+      print("prepared",model0,f_in,f_mod,f_log,f_stats)
       if not os.path.isfile(f_mod):
          p = Process(target=learner.build, args=(model0,f_in,f_mod,f_log,f_stats))
          p.start()
          p.join()
 
+      print("finished")
       pid = protos.coop(ref, model0, noinit=True, efun=learner.efun())
       result = expres.benchmarks.eval(pids=[pid], **crossval)
 
@@ -88,10 +92,12 @@ class AutoTuneLgb(LightGBM):
       results = {}
       pids = []
 
-      log.disable()
+      ##log.disable()
       start = time.time()
       for trial in study:
+         print(trial)
          (obj, context, pid, result, learner, model0) = self.observe(trial.parameters, model, **self.crossval)
+         print("observed.")
          if (not best_obj) or obj < best_obj:
             best_obj = obj
             best_learner = learner
@@ -99,17 +105,18 @@ class AutoTuneLgb(LightGBM):
          results.update(result)
          pids.append(pid)
          #redirect.finish(*redir)
-         log.enable()
+         ##log.enable()
          log.text("| %s = %s" % (learner.desc(), obj))
-         log.disable()
+         ##log.disable()
          #redir = redirect.start(f_log)
          study.add_observation(trial=trial, objective=obj, context=context)
          study.finalize(trial)
          if time.time() - start > self.tunetime:
             break
+         print("done.")
       
       #redirect.finish(*redir)
-      log.enable()
+      ##log.enable()
       os.system("cp %s/model.%s %s" % (models.path(best_model), best_learner.ext(), models.path(model)))
       expres.dump.solved(pids=pids, results=results, **self.crossval)
 
