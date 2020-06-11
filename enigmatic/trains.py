@@ -81,7 +81,7 @@ def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=Non
 
 def make(d_outs, bid, version, hashing, out, cores=4, **others):
    
-   def save(arg, res, bar):
+   def save(res, bar):
       nonlocal out
       #(xs0, ys0) = res
       #dump_svmlight_file(xs0, ys0, out)
