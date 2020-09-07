@@ -51,8 +51,8 @@ def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
       out = subprocess.check_output(args)
    except subprocess.CalledProcessError as e:
       #out = e.output
-      out = ""
-   if f_in:
+      out = None
+   if f_in and out:
       with open(f_in, "wb") as f: f.write(out)
    #with io.BytesIO(out) as data:
    #   (xs, ys) = load_svmlight_file(data)
