@@ -87,7 +87,8 @@ def make(d_outs, bid, version, hashing, out, cores=4, **others):
       nonlocal out
       #(xs0, ys0) = res
       #dump_svmlight_file(xs0, ys0, out)
-      out.write(res)
+      if res:
+         out.write(res)
 
    callback = save if out else None
    rets = []
