@@ -47,9 +47,12 @@ def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
       args.append("--enigmap-file=%s" % f_map)
    args.extend([f_pos, f_neg, f_cnf])
    try:
-      out = subprocess.check_output(args, stderr=subprocess.STDOUT)
+      #out = subprocess.check_output(args, stderr=subprocess.STDOUT)
+      out = subprocess.check_output(args)
    except subprocess.CalledProcessError as e:
-      out = e.output
+      #out = e.output
+      print("ERROR: "+e.output)
+      out = ""
    if f_in:
       with open(f_in, "wb") as f: f.write(out)
    #with io.BytesIO(out) as data:
