@@ -51,7 +51,6 @@ def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
       out = subprocess.check_output(args)
    except subprocess.CalledProcessError as e:
       #out = e.output
-      print("ERROR: "+e.output)
       out = ""
    if f_in:
       with open(f_in, "wb") as f: f.write(out)
