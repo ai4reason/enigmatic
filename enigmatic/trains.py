@@ -2,8 +2,6 @@ import os, io
 import subprocess
 from sklearn.datasets import load_svmlight_file, dump_svmlight_file
 from pyprove import expres, par, log
-from scipy.sparse import vstack, hstack
-import lightgbm as lgb
 
 #from pyprove import expres, eprover
 #import traceback
@@ -58,8 +56,70 @@ def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
    #   (xs, ys) = load_svmlight_file(data)
    return out
 
+def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None):
+   args = [
+      "enigmatic-features", 
+      "--free-numbers", 
+      "--features=%s" % features
+   ]
+   if f_map:
+      args.append("--output-map=%s" % f_map)
+   if f_buckets:
+      args.append("--output-buckets=%s" % f_buckets)
+   if f_problem:
+      args.append("--problem=%s" % f_problem)
+   if prefix is True:
+      args.append("--prefix-pos")
+   elif prefix is False:
+      args.append("--prefix-neg")
+   elif prefix is not None:
+      args.append("--prefix=%s" % prefix)
+   args.append(f_list)
+   try:
+      out = subprocess.check_output(args)
+   except subprocess.CalledProcessError as e:
+      out = None
+   if f_out and out:
+      with open(f_out, "ab") as f: f.write(out)
+   return out
+
+def makedir(d_posneg, features, bid, cores, callback, msg="[*]", d_info=None):
+
+   def job(f, pos):
+      p = f[:-4] 
+      f_list = os.path.join(d_posneg, f)
+      f_problem = expres.benchmarks.path(bid, p)
+      f_map = os.path.join(d_info, p+".map") if d_info else None
+      f_buckets  = os.path.join(d_info, p+".json") if d_info else None
+      f_out = os.path.join(d_info, p+".in") if d_info else None
+      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
+
+   pos = [f for f in os.listdir(d_posneg) if f.endswith(".pos")]
+   neg = [f for f in os.listdir(d_posneg) if f.endswith(".neg")]
+   jobs = [job(f,True) for f in pos] + [job(f,False) for f in neg]
+   par.apply(makesingle, jobs, cores=cores, barmsg=msg, callback=callback, chunksize=100)
+
+def path(bid, limit, features, dataname, **others):
+   bid = bid.replace("/","-")
+   tid = "%s-%s" % (bid, limit)
+   return os.path.join(DEFAULT_DIR, tid, dataname, features)
+
+def make(d_outs, out, bid, limit, features, dataname, cores, debug=[], **others):
    
-def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=None):
+   def save(res, bar):
+      if res:
+         out.write(res)
+
+   for (n,d_out) in enumerate(d_outs):
+      msg = "[%s/%s]" % (n+1, len(d_outs))
+      d_info = None
+      if "trains" in debug:
+         d_info = path(bid, limit, features, dataname) 
+         os.system('mkdir -p "%s"' % d_info)
+      ret = makedir(d_out, features, bid, cores, callback=save, msg=msg, d_info=d_info)
+   
+   
+def makedirXXX(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=None):
 
    def job(p):
       nonlocal d_out, bid, version, hashing
@@ -81,7 +141,7 @@ def makedir(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=Non
 
    return ret
 
-def make(d_outs, bid, version, hashing, out, cores=4, **others):
+def makeXXX(d_outs, bid, version, hashing, out, cores=4, **others):
    
    def save(res, bar):
       nonlocal out

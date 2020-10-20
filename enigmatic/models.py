@@ -47,9 +47,9 @@ def collect(model, rkeys, settings):
    f_dat = path(model, "train.%s" % ("in" if hashing else "pre"))
    if force or not os.path.isfile(f_dat):
       log.msg("+ extracting training data from results")
-      pretrains.prepare(rkeys, version, force, cores, hashing)
+      trains.prepare(rkeys, version, force, cores, hashing)
       log.msg("+ collecting %s data" % ("training" if hashing else "pretrains"))
-      pretrains.make(rkeys, out=open(f_dat, "w"), hashing=hashing, version=version)
+      trains.make(rkeys, out=open(f_dat, "w"), hashing=hashing, version=version)
 
 
 def setup(model, rkeys, settings):
