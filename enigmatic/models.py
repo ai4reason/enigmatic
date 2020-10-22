@@ -27,16 +27,10 @@ DEFAULTS = {
 def path(model, filemodel=None):
    def add(f):
       return f if not filemodel else os.path.join(f, filemodel)
-      
-   f = add(os.path.join(DEFAULT_DIR, model))
-   if RAMDISK_DIR and not os.path.isfile(f):
-      f = add(os.path.join(RAMDISK_DIR, model))
-   return f
+   return add(os.path.join(DEFAULT_DIR, model))
 
-
-def name(bid, limit, ref, version, learner, hashing, **others):
-   modelname = others["modelname"] if "modelname" in others else ref
-   return "%s-%s/%s-%s%s/%s" % (bid.replace("/","-"), limit, modelname, version, log.humanexp(hashing),learner.desc())
+def name(bid, limit, dataname, features, learner, **others):
+   return "%s-%s/%s/%s/%s" % (bid.replace("/","-"), limit, dataname, features,learner.desc())
 
 def collect(model, rkeys, settings):
    version = settings["version"]

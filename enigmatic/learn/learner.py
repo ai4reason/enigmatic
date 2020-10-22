@@ -12,7 +12,7 @@ from enigmatic import models
 class Learner:
    
    def __init__(self, bar_round=None):
-      self.stats = None
+      self.stats = {}
       # total for progress bar
       self.bar_round = bar_round if log.ENABLED else None
 
@@ -77,8 +77,14 @@ class Learner:
       return ret
 
    def predict(self, f_in, f_mod):
-      return {}
+      return []
 
    def nobar(self):
       self.bar_round = None
+
+   def accuracy(self, f_in, f_mod):
+      preds = list(self.predict(f_in, f_mod))
+      acc = sum([1 for (x,y) in preds if int(x>0.5)==y])
+      acc /= len(preds)
+      return acc
 

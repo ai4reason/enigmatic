@@ -2,6 +2,7 @@ import re
 import lightgbm as lgb
 from .learner import Learner
 from pyprove import log
+from sklearn.datasets import load_svmlight_file
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -63,4 +64,10 @@ class LightGBM(Learner):
       bst.free_dataset()
       bst.free_network()
       return bst
+
+   def predict(self, f_in, f_mod):
+      bst = lgb.Booster(model_file=f_mod)
+      (xs, ys) = load_svmlight_file(f_in, zero_based=True)
+      preds = bst.predict(xs, predict_disable_shape_check=True)
+      return zip(preds, ys)
 

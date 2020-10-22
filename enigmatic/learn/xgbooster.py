@@ -2,6 +2,7 @@ import re
 import xgboost as xgb
 from .learner import Learner
 from pyprove import log
+from sklearn.datasets import load_svmlight_file
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -57,7 +58,14 @@ class XGBoost(Learner):
       self.stats["train.count.neg"] = log.humanint(neg)
       self.params["scale_pos_weight"] = (neg/pos)
       
-      bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")], callbacks=[lambda _: iter_done()])
+      bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")])
       bst.save_model(f_mod)
       return bst
+
+   def predict(self, f_in, f_mod):
+      bst = xgb.Booster(model_file=f_mod)
+      (xs, ys) = load_svmlight_file(f_in, zero_based=True)
+      preds = bst.predict(xgb.DMatrix(xs), validate_features=False)
+      return zip(preds, ys)
+
 

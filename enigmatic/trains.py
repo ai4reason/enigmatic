@@ -104,6 +104,19 @@ def path(bid, limit, features, dataname, **others):
    tid = "%s-%s" % (bid, limit)
    return os.path.join(DEFAULT_DIR, tid, dataname, features)
 
+def makemap(bid, limit, features, dataname, **others):
+   f_map = os.path.join(path(bid, limit, features, dataname), "enigma.map")
+   args = [
+      "enigmatic-features", 
+      "--features=%s" % features,
+      "--output-map=%s" % f_map
+   ]
+   try:
+      subprocess.run(args)
+   except Exception as e:
+      print(e)
+      pass
+
 def make(d_outs, out, bid, limit, features, dataname, cores, debug=[], **others):
    
    def save(res, bar):
@@ -112,10 +125,8 @@ def make(d_outs, out, bid, limit, features, dataname, cores, debug=[], **others)
 
    for (n,d_out) in enumerate(d_outs):
       msg = "[%s/%s]" % (n+1, len(d_outs))
-      d_info = None
-      if "trains" in debug:
-         d_info = path(bid, limit, features, dataname) 
-         os.system('mkdir -p "%s"' % d_info)
+      makemap(bid, limit, features, dataname, **others)
+      d_info = path(bid, limit, features, dataname) if "train" in debug else None
       ret = makedir(d_out, features, bid, cores, callback=save, msg=msg, d_info=d_info)
    
    
