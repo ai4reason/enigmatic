@@ -1,8 +1,8 @@
 import re
 import lightgbm as lgb
 from .learner import Learner
-from pyprove import log
 from sklearn.datasets import load_svmlight_file
+from pyprove import log
 
 DEFAULTS = {
    'max_depth': 9, 

@@ -1,6 +1,6 @@
 import os, io
 import subprocess
-from sklearn.datasets import load_svmlight_file, dump_svmlight_file
+from sklearn.datasets import load_svmlight_file
 from pyprove import expres, par, log
 
 #from pyprove import expres, eprover
