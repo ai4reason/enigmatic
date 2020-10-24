@@ -30,7 +30,7 @@ def path(model, filemodel=None):
    return add(os.path.join(DEFAULT_DIR, model))
 
 def name(bid, limit, dataname, features, learner, **others):
-   return "%s-%s/%s/%s/%s" % (bid.replace("/","-"), limit, dataname, features,learner.desc())
+   return "%s-%s/%s/%s/%s" % (bid.replace("/","-"), limit, dataname, features, learner.desc())
 
 def collect(model, rkeys, settings):
    version = settings["version"]
@@ -76,7 +76,7 @@ def setup(model, rkeys, settings):
    return emap if not hashing else hashing
 
 # TODO: finish - remove old non-hashing stuff
-def build(model, f_in, learner):
+def buildXXXX(model, f_in, learner):
    log.msg("+ training %s model" % learner.name())
    f_mod   = path(model, "model.%s" % learner.ext())
    f_stats = path(model, "train.stats")
@@ -85,7 +85,26 @@ def build(model, f_in, learner):
    p.join()
 
 
-def make(model, rkeys, settings, train_in=None):
+
+
+
+def build(learner, debug=[], **others):
+   f_in = os.path.join(trains.path(**others), "train.in") 
+   model = name(**others, learner=learner)
+   f_mod = path(model, "model.%s" % learner.ext())
+   if os.path.isfile(f_mod) and "force" in debug:
+      return
+   os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
+   learner.build(model, f_in, f_mod)
+
+
+
+
+
+
+
+
+def makeXXX(model, rkeys, settings, train_in=None):
    
    learner = settings["learner"]
 

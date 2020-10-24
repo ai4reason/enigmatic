@@ -1,8 +1,8 @@
 import re
 import lightgbm as lgb
 from .learner import Learner
-from sklearn.datasets import load_svmlight_file
 from pyprove import log
+from .. import trains 
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -48,12 +48,12 @@ class LightGBM(Learner):
       self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
 
    def train(self, f_in, f_mod, iter_done=None):
-      dtrain = lgb.Dataset(f_in)
+      (xs, ys) = trains.load(f_in)
+      dtrain = lgb.Dataset(xs, label=ys)
       dtrain.construct()
-      labels = dtrain.get_label()
-      pos = len([x for x in labels if x == 1])
-      neg = len([x for x in labels if x == 0])
-      self.stats["train.count"] = log.humanint(len(labels))
+      pos = sum(ys)
+      neg = len(ys) - pos
+      self.stats["train.count"] = log.humanint(len(ys))
       self.stats["train.count.pos"] = log.humanint(pos)
       self.stats["train.count.neg"] = log.humanint(neg)
       self.params["scale_pos_weight"] = (neg/pos)
@@ -67,7 +67,7 @@ class LightGBM(Learner):
 
    def predict(self, f_in, f_mod):
       bst = lgb.Booster(model_file=f_mod)
-      (xs, ys) = load_svmlight_file(f_in, zero_based=True)
+      (xs, ys) = trains.load(f_in)
       preds = bst.predict(xs, predict_disable_shape_check=True)
       return zip(preds, ys)
 

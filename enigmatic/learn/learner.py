@@ -36,7 +36,16 @@ class Learner:
    def readlog(self, f_log):
       return
 
-   def build(self, model, f_in=None, f_mod=None, f_log=True, f_stats=True):
+
+   def build(self, model, f_in, f_mod):
+      f_log = models.path(model, "train.log")
+      redir = redirect.start(f_log)
+      self.train(f_in, f_mod)
+      redirect.finish(*redir)
+
+
+
+   def buildXXX(self, model, f_in=None, f_mod=None, f_log=True, f_stats=True):
       f_in = models.path(model, "train.in") if not f_in else f_in
       f_mod = models.path(model, "model.%s" % self.ext()) if not f_mod else f_mod
       if f_log is True: f_log = models.path(model, "train.log")

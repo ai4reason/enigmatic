@@ -1,8 +1,8 @@
 import re
 import xgboost as xgb
 from .learner import Learner
-from sklearn.datasets import load_svmlight_file
 from pyprove import log
+from .. import trains 
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -49,11 +49,11 @@ class XGBoost(Learner):
       self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
 
    def train(self, f_in, f_mod, iter_done=lambda x: x):
-      dtrain = xgb.DMatrix(f_in)
-      labels = dtrain.get_label()
-      pos = float(len([x for x in labels if x == 1]))
-      neg = float(len([x for x in labels if x == 0]))
-      self.stats["train.count"] = log.humanint(len(labels))
+      (xs, ys) = trains.load(f_in)
+      dtrain = xgb.DMatrix(xs, label=ys)
+      pos = sum(ys)
+      neg = len(ys) - pos
+      self.stats["train.count"] = log.humanint(len(ys))
       self.stats["train.count.pos"] = log.humanint(pos)
       self.stats["train.count.neg"] = log.humanint(neg)
       self.params["scale_pos_weight"] = (neg/pos)
@@ -64,7 +64,7 @@ class XGBoost(Learner):
 
    def predict(self, f_in, f_mod):
       bst = xgb.Booster(model_file=f_mod)
-      (xs, ys) = load_svmlight_file(f_in, zero_based=True)
+      (xs, ys) = trains.load(f_in)
       preds = bst.predict(xgb.DMatrix(xs), validate_features=False)
       return zip(preds, ys)
 

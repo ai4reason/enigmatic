@@ -1,60 +1,29 @@
 import os, io
 import subprocess
 from sklearn.datasets import load_svmlight_file
+import numpy, scipy
 from pyprove import expres, par, log
-
-#from pyprove import expres, eprover
-#import traceback
-#from pyprove import log
-
-###DEFAULT_NAME = "00TRAINS"
-###DEFAULT_DIR = os.getenv("ENIGMATIC_TRAINS", DEFAULT_NAME)
-###RAMDISK_DIR = None
-###
-###TRAINS_DIR = os.getenv("EXPRES_TRAINS", "./00TRAINS") # todel
-###
-###def path(bid, pid, problem, limit, version, hashing, ext="out"):
-###   global DEFAULT_DIR, RAMDISK_DIR
-###   tid = bid.replace("/","-")
-###   tid += "-%s%s" % ("T" if isinstance(limit,int) else "", limit)
-###   vid = "%s%s" % (version, log.humanexp(hashing))
-###   f_out = "%s.%s" % (problem, ext)
-###   f = os.path.join(DEFAULT_DIR, tid, vid, pid, f_out)
-###   if RAMDISK_DIR and not os.path.isfile(f):
-###      f = os.path.join(RAMDISK_DIR, tid, vid, pid, f_out)
-###   return f
 
 DEFAULT_NAME = "00TRAINS"
 DEFAULT_DIR = os.getenv("PYPROVE_TRAINS", DEFAULT_NAME)
-#RAMDISK_DIR = None
 
-def dirpath(bid, pid, limit, version, hashing):
-   global DEFAULT_DIR, RAMDISK_DIR
-   tid = "%s-%s" % (bid.replace("/","-"), limit)
-   vid = "%s%s" % (version, log.humanexp(hashing))
-   return os.path.join(DEFAULT_DIR, tid, vid)
+def load(f_in):
+   z_data = f_in + "-data.npz"
+   z_label = f_in + "-label.npz"
+   print(z_data, os.path.isfile(z_data))
+   if os.path.isfile(z_data) and os.path.isfile(z_label):
+      data = scipy.sparse.load_npz("train.in-data.npz")
+      label = numpy.load("train.in-label.npz", allow_pickle=True)["label"]
+   else:
+      (data, label) = load_svmlight_file(f_in, zero_based=True)
+   return (data, label)
 
-def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
-   args = [
-      "enigma-features", 
-      "--free-numbers", 
-      "--enigma-features=%s" % version,
-      "--feature-hashing=%s" % hashing
-   ]
-   if f_map:
-      args.append("--enigmap-file=%s" % f_map)
-   args.extend([f_pos, f_neg, f_cnf])
-   try:
-      #out = subprocess.check_output(args, stderr=subprocess.STDOUT)
-      out = subprocess.check_output(args)
-   except subprocess.CalledProcessError as e:
-      #out = e.output
-      out = None
-   if f_in and out:
-      with open(f_in, "wb") as f: f.write(out)
-   #with io.BytesIO(out) as data:
-   #   (xs, ys) = load_svmlight_file(data)
-   return out
+def compress(f_in):
+   (data, label) = load_svmlight_file(f_in, zero_based=True)
+   z_data = f_in + "-data.npz"
+   z_label = f_in + "-label.npz"
+   scipy.sparse.save_npz(z_data, data, compressed=True)
+   numpy.savez_compressed(z_label, label=label)
 
 def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None):
    args = [
@@ -80,31 +49,15 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
    except subprocess.CalledProcessError as e:
       out = None
    if f_out and out:
-      with open(f_out, "ab") as f: f.write(out)
+      with open(f_out, "wb") as f: f.write(out)
    return out
-
-def makedir(d_posneg, features, bid, cores, callback, msg="[*]", d_info=None):
-
-   def job(f, pos):
-      p = f[:-4] 
-      f_list = os.path.join(d_posneg, f)
-      f_problem = expres.benchmarks.path(bid, p)
-      f_map = os.path.join(d_info, p+".map") if d_info else None
-      f_buckets  = os.path.join(d_info, p+".json") if d_info else None
-      f_out = os.path.join(d_info, p+".in") if d_info else None
-      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
-
-   pos = [f for f in os.listdir(d_posneg) if f.endswith(".pos")]
-   neg = [f for f in os.listdir(d_posneg) if f.endswith(".neg")]
-   jobs = [job(f,True) for f in pos] + [job(f,False) for f in neg]
-   par.apply(makesingle, jobs, cores=cores, barmsg=msg, callback=callback, chunksize=100)
 
 def path(bid, limit, features, dataname, **others):
    bid = bid.replace("/","-")
    tid = "%s-%s" % (bid, limit)
    return os.path.join(DEFAULT_DIR, tid, dataname, features)
 
-def makemap(bid, limit, features, dataname, **others):
+def enigmap(bid, limit, features, dataname, **others):
    f_map = os.path.join(path(bid, limit, features, dataname), "enigma.map")
    args = [
       "enigmatic-features", 
@@ -117,64 +70,143 @@ def makemap(bid, limit, features, dataname, **others):
       print(e)
       pass
 
-def make(d_outs, out, bid, limit, features, dataname, cores, debug=[], **others):
-   
-   def save(res, bar):
-      if res:
-         out.write(res)
-
-   for (n,d_out) in enumerate(d_outs):
-      msg = "[%s/%s]" % (n+1, len(d_outs))
-      makemap(bid, limit, features, dataname, **others)
-      d_info = path(bid, limit, features, dataname) if "train" in debug else None
-      ret = makedir(d_out, features, bid, cores, callback=save, msg=msg, d_info=d_info)
-   
-   
-def makedirXXX(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=None):
-
-   def job(p):
-      nonlocal d_out, bid, version, hashing
-      f_pos = os.path.join(d_out, p+".pos")
-      f_neg = os.path.join(d_out, p+".neg")
-      f_cnf = expres.benchmarks.path(os.path.join(bid,"cnf"), p)
-      f_in  = os.path.join(d_info, p+".in") if d_info else None
+def makes(posnegs, bid, features, cores, callback, msg="[*]", d_info=None, **others):
+   def job(f_list):
+      p = os.path.basename(f_list)[:-4]
+      pos = f_list.endswith(".pos")
+      f_problem = expres.benchmarks.path(bid, p)
       f_map = os.path.join(d_info, p+".map") if d_info else None
-      return (f_pos, f_neg, f_cnf, version, hashing, f_in, f_map)
-   
-   def select(ext):
-      nonlocal d_out
-      return [f[:-(1+len(ext))] for f in os.listdir(d_out) if f.endswith("."+ext)]
+      f_buckets  = os.path.join(d_info, p+".json") if d_info else None
+      f_out = os.path.join(d_info, p+".in") if d_info else None
+      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
+   jobs = list(map(job, posnegs))
+   par.apply(makesingle, jobs, cores=cores, barmsg="[POS/NEG]", 
+      callback=callback, chunksize=100)
 
-   pos = select("pos")
-   neg = select("neg")
-   jobs = [job(p) for p in pos if p in neg]
-   ret = par.apply(makeone, jobs, cores=cores, barmsg=msg, callback=callback, chunksize=100)
-
-   return ret
-
-def makeXXX(d_outs, bid, version, hashing, out, cores=4, **others):
-   
+def make(d_posnegs, debug=[], **others):
    def save(res, bar):
       nonlocal out
-      #(xs0, ys0) = res
-      #dump_svmlight_file(xs0, ys0, out)
       if res:
          out.write(res)
+   d_in = path(**others)
+   os.system('mkdir -p "%s"' % d_in)
+   f_out = os.path.join(d_in, "train.in")
+   if os.path.isfile(f_out) and not "force" in debug:
+      return
+   out = open(f_out, "wb")
+   posnegs = []
+   d_info = path(**others) if "train" in debug else None
+   for d in d_posnegs:
+      fs = [f for f in os.listdir(d) if f.endswith(".pos") or f.endswith(".neg")]
+      fs = [os.path.join(d,f) for f in fs]
+      posnegs.extend(fs)
+   makes(posnegs, callback=save, d_info=d_info, debug=debug, **others)
+   out.close()
+   # compress data as numpy npz data
+   if not "nozip" in debug:
+      compress(f_out)
+      os.remove(f_out)
 
-   callback = save if out else None
-   rets = []
-   for (n,d_out) in enumerate(d_outs):
-      msg = "[%s/%s]" % (n+1, len(d_outs))
-      ret = makedir(d_out, bid, version, hashing, cores, callback, msg)
-      if not out:
-         rets.extend(ret)
-
-   return rets
-
-def build(bid, pids, limit, version, hashing, cores, out=None, **others):
-   pass
+def build(pids, **others):
+   d_posnegs = [expres.results.dir(pid=pid, **others) for pid in pids]
+   make(d_posnegs, **others)
+   enigmap(**others)
 
 
+#from pyprove import expres, eprover
+#import traceback
+#from pyprove import log
+
+###DEFAULT_NAME = "00TRAINS"
+###DEFAULT_DIR = os.getenv("ENIGMATIC_TRAINS", DEFAULT_NAME)
+###RAMDISK_DIR = None
+###
+###TRAINS_DIR = os.getenv("EXPRES_TRAINS", "./00TRAINS") # todel
+###
+###def path(bid, pid, problem, limit, version, hashing, ext="out"):
+###   global DEFAULT_DIR, RAMDISK_DIR
+###   tid = bid.replace("/","-")
+###   tid += "-%s%s" % ("T" if isinstance(limit,int) else "", limit)
+###   vid = "%s%s" % (version, log.humanexp(hashing))
+###   f_out = "%s.%s" % (problem, ext)
+###   f = os.path.join(DEFAULT_DIR, tid, vid, pid, f_out)
+###   if RAMDISK_DIR and not os.path.isfile(f):
+###      f = os.path.join(RAMDISK_DIR, tid, vid, pid, f_out)
+###   return f
+
+#def dirpath(bid, pid, limit, version, hashing):
+#   global DEFAULT_DIR, RAMDISK_DIR
+#   tid = "%s-%s" % (bid.replace("/","-"), limit)
+#   vid = "%s%s" % (version, log.humanexp(hashing))
+#   return os.path.join(DEFAULT_DIR, tid, vid)
+#
+#def makeone(f_pos, f_neg, f_cnf, version, hashing, f_in=None, f_map=None):
+#   args = [
+#      "enigma-features", 
+#      "--free-numbers", 
+#      "--enigma-features=%s" % version,
+#      "--feature-hashing=%s" % hashing
+#   ]
+#   if f_map:
+#      args.append("--enigmap-file=%s" % f_map)
+#   args.extend([f_pos, f_neg, f_cnf])
+#   try:
+#      #out = subprocess.check_output(args, stderr=subprocess.STDOUT)
+#      out = subprocess.check_output(args)
+#   except subprocess.CalledProcessError as e:
+#      #out = e.output
+#      out = None
+#   if f_in and out:
+#      with open(f_in, "wb") as f: f.write(out)
+#   #with io.BytesIO(out) as data:
+#   #   (xs, ys) = load_svmlight_file(data)
+#   return out
+#
+#
+#
+#
+#
+#def makedirXXX(d_out, bid, version, hashing, cores, callback, msg="[*]", d_info=None):
+#
+#   def job(p):
+#      nonlocal d_out, bid, version, hashing
+#      f_pos = os.path.join(d_out, p+".pos")
+#      f_neg = os.path.join(d_out, p+".neg")
+#      f_cnf = expres.benchmarks.path(os.path.join(bid,"cnf"), p)
+#      f_in  = os.path.join(d_info, p+".in") if d_info else None
+#      f_map = os.path.join(d_info, p+".map") if d_info else None
+#      return (f_pos, f_neg, f_cnf, version, hashing, f_in, f_map)
+#   
+#   def select(ext):
+#      nonlocal d_out
+#      return [f[:-(1+len(ext))] for f in os.listdir(d_out) if f.endswith("."+ext)]
+#
+#   pos = select("pos")
+#   neg = select("neg")
+#   jobs = [job(p) for p in pos if p in neg]
+#   ret = par.apply(makeone, jobs, cores=cores, barmsg=msg, callback=callback, chunksize=100)
+#
+#   return ret
+#
+#def makeXXX(d_outs, bid, version, hashing, out, cores=4, **others):
+#   
+#   def save(res, bar):
+#      nonlocal out
+#      #(xs0, ys0) = res
+#      #dump_svmlight_file(xs0, ys0, out)
+#      if res:
+#         out.write(res)
+#
+#   callback = save if out else None
+#   rets = []
+#   for (n,d_out) in enumerate(d_outs):
+#      msg = "[%s/%s]" % (n+1, len(d_outs))
+#      ret = makedir(d_out, bid, version, hashing, cores, callback, msg)
+#      if not out:
+#         rets.extend(ret)
+#
+#   return rets
+#
 
 ##
 ##     
