@@ -12,8 +12,8 @@ def load(f_in):
    z_label = f_in + "-label.npz"
    print(z_data, os.path.isfile(z_data))
    if os.path.isfile(z_data) and os.path.isfile(z_label):
-      data = scipy.sparse.load_npz("train.in-data.npz")
-      label = numpy.load("train.in-label.npz", allow_pickle=True)["label"]
+      data = scipy.sparse.load_npz(z_data)
+      label = numpy.load(z_label, allow_pickle=True)["label"]
    else:
       (data, label) = load_svmlight_file(f_in, zero_based=True)
    return (data, label)
