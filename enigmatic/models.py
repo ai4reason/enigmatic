@@ -32,6 +32,11 @@ def path(model, filemodel=None):
 def name(bid, limit, dataname, features, learner, **others):
    return "%s-%s/%s/%s/%s" % (bid.replace("/","-"), limit, dataname, features, learner.desc())
 
+def filename(learner, **others):
+   model = name(learner=learner, **others)
+   f_mod = path(model, "model.%s" % learner.ext())
+   return f_mod
+
 def collect(model, rkeys, settings):
    version = settings["version"]
    force = settings["force"]
@@ -92,7 +97,7 @@ def build(learner, debug=[], **others):
    f_in = os.path.join(trains.path(**others), "train.in") 
    model = name(**others, learner=learner)
    f_mod = path(model, "model.%s" % learner.ext())
-   if os.path.isfile(f_mod) and "force" in debug:
+   if os.path.isfile(f_mod) and not "force" in debug:
       return
    os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
    learner.build(model, f_in, f_mod)

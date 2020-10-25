@@ -10,7 +10,6 @@ DEFAULT_DIR = os.getenv("PYPROVE_TRAINS", DEFAULT_NAME)
 def load(f_in):
    z_data = f_in + "-data.npz"
    z_label = f_in + "-label.npz"
-   print(z_data, os.path.isfile(z_data))
    if os.path.isfile(z_data) and os.path.isfile(z_label):
       data = scipy.sparse.load_npz(z_data)
       label = numpy.load(z_label, allow_pickle=True)["label"]
@@ -56,6 +55,9 @@ def path(bid, limit, features, dataname, **others):
    bid = bid.replace("/","-")
    tid = "%s-%s" % (bid, limit)
    return os.path.join(DEFAULT_DIR, tid, dataname, features)
+
+def filename(**others):
+   return os.path.join(path(**others), "train.in")
 
 def enigmap(bid, limit, features, dataname, **others):
    f_map = os.path.join(path(bid, limit, features, dataname), "enigma.map")
