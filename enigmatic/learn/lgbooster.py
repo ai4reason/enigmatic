@@ -1,8 +1,11 @@
 import re
+import logging
 import lightgbm as lgb
 from .learner import Learner
 from pyprove import log
 from .. import trains 
+
+logger = logging.getLogger(__name__)
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -44,22 +47,25 @@ class LightGBM(Learner):
       losses = {int(x): float(y) for (x,y) in losses}
       last = max(losses)
       best = min(losses, key=lambda x: losses[x])
-      self.stats["model.loss.last"] = "%f [iter %s]" % (losses[last], last)
-      self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
+      self.stats["model.last.loss"] = [losses[last], last]
+      self.stats["model.best.loss"] = [losses[best], best]
 
    def train(self, f_in, f_mod, iter_done=None):
+      logger.debug("- loading training data %s" % f_in)
       (xs, ys) = trains.load(f_in)
       dtrain = lgb.Dataset(xs, label=ys)
       dtrain.construct()
       pos = sum(ys)
       neg = len(ys) - pos
-      self.stats["train.count"] = log.humanint(len(ys))
-      self.stats["train.count.pos"] = log.humanint(pos)
-      self.stats["train.count.neg"] = log.humanint(neg)
+      self.stats["train.count"] = len(ys)
+      self.stats["train.pos.count"] = int(pos)
+      self.stats["train.neg.count"] = int(neg)
       self.params["scale_pos_weight"] = (neg/pos)
 
       callbacks = [lambda _: iter_done()] if iter_done else None
+      logger.debug("- building lgb model %s" % f_mod)
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=callbacks)
+      logger.debug("- saving model %s" % f_mod)
       bst.save_model(f_mod)
       bst.free_dataset()
       bst.free_network()
@@ -67,7 +73,9 @@ class LightGBM(Learner):
 
    def predict(self, f_in, f_mod):
       bst = lgb.Booster(model_file=f_mod)
+      logger.debug("- loading training data %s" % f_in)
       (xs, ys) = trains.load(f_in)
+      logger.debug("- predicting with lgb model %s" % f_mod)
       preds = bst.predict(xs, predict_disable_shape_check=True)
       return zip(preds, ys)
 

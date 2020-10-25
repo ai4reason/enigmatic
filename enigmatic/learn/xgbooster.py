@@ -1,8 +1,11 @@
 import re
+import logging
 import xgboost as xgb
 from .learner import Learner
 from pyprove import log
 from .. import trains 
+
+logger = logging.getLogger(__name__)
 
 DEFAULTS = {
    'max_depth': 9, 
@@ -45,26 +48,32 @@ class XGBoost(Learner):
       losses = {int(x): float(y) for (x,y) in losses}
       last = max(losses)
       best = min(losses, key=lambda x: losses[x])
-      self.stats["model.loss.last"] = "%f [iter %s]" % (losses[last], last)
-      self.stats["model.loss.best"] = "%f [iter %s]" % (losses[best], best)
+      self.stats["model.last.loss"] = [losses[last], last]
+      self.stats["model.best.loss"] = [losses[best], best]
 
    def train(self, f_in, f_mod, iter_done=lambda x: x):
+      logger.debug("- loading training data %s" % f_in)
       (xs, ys) = trains.load(f_in)
       dtrain = xgb.DMatrix(xs, label=ys)
       pos = sum(ys)
       neg = len(ys) - pos
-      self.stats["train.count"] = log.humanint(len(ys))
-      self.stats["train.count.pos"] = log.humanint(pos)
-      self.stats["train.count.neg"] = log.humanint(neg)
+      self.stats["train.count"] = len(ys)
+      self.stats["train.pos.count"] = int(pos)
+      self.stats["train.neg.count"] = int(neg)
       self.params["scale_pos_weight"] = (neg/pos)
       
+      logger.debug("- building xgb model %s" % f_mod)
       bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")])
+      logger.debug("- saving model %s" % f_mod)
       bst.save_model(f_mod)
       return bst
 
    def predict(self, f_in, f_mod):
       bst = xgb.Booster(model_file=f_mod)
+      logger.debug("- loading training data %s" % f_in)
       (xs, ys) = trains.load(f_in)
+      (xs, ys) = trains.load(f_in)
+      logger.debug("- predicting with xgb model %s" % f_mod)
       preds = bst.predict(xgb.DMatrix(xs), validate_features=False)
       return zip(preds, ys)
 
