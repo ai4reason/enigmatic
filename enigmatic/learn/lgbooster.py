@@ -50,7 +50,7 @@ class LightGBM(Learner):
       self.stats["model.last.loss"] = [losses[last], last]
       self.stats["model.best.loss"] = [losses[best], best]
 
-   def train(self, f_in, f_mod, iter_done=None):
+   def train(self, f_in, f_mod, atstart=None, atiter=None, atfinish=None):
       logger.debug("- loading training data %s" % f_in)
       (xs, ys) = trains.load(f_in)
       dtrain = lgb.Dataset(xs, label=ys)
@@ -62,9 +62,11 @@ class LightGBM(Learner):
       self.stats["train.neg.count"] = int(neg)
       self.params["scale_pos_weight"] = (neg/pos)
 
-      callbacks = [lambda _: iter_done()] if iter_done else None
+      callbacks = [lambda _: atiter()] if atiter else None
       logger.debug("- building lgb model %s" % f_mod)
+      if atstart: atstart()
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=callbacks)
+      if atfinish: atfinish()
       logger.debug("- saving model %s" % f_mod)
       bst.save_model(f_mod)
       bst.free_dataset()
