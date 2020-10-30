@@ -64,6 +64,7 @@ class LightGBM(Learner):
 
       callbacks = [lambda _: atiter()] if atiter else None
       logger.debug("- building lgb model %s" % f_mod)
+      logger.debug(log.data("- learning parameters:", self.params))
       if atstart: atstart()
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=callbacks)
       if atfinish: atfinish()

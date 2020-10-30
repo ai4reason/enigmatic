@@ -30,3 +30,11 @@ def build(features, debug=[], path=default_path, **others):
       return
    make(f_map, features)
 
+def load(**others):
+   f_map = models.pathfile("enigma.map", **others)
+   with open(f_map) as f:
+      lines = f.read().strip().split("\n")
+      features = lines[0].lstrip("features(").rstrip(").")
+      count = int(lines[1].lstrip("count(").rstrip(")."))
+   return dict(features=features, count=count, lines=lines)
+

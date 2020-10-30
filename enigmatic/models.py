@@ -33,14 +33,25 @@ def build(learner, debug=[], **others):
    f_mod = filename(learner=learner, **others)
    os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
    enigmap.build(learner=learner, debug=debug, **others)
+   learner.params["num_feature"] = enigmap.load(learner=learner, **others)["count"]
+   new = protos.build(model, learner=learner, debug=debug, **others)
    if os.path.isfile(f_mod) and not "force" in debug:
       logger.debug("- skipped building model %s" % f_mod)
-      return
+      return new
    f_log = pathfile("train.log", learner=learner, **others)
    #learner.build(f_in, f_mod, f_log)
    p = Process(target=learner.build, args=(f_in,f_mod,f_log))
    p.start()
    p.join()
+   return new
+
+def loop(pids, results, nick, **others):
+   others["dataname"] += "/" + nick
+   trains.build(pids=pids, **others)
+   newp = build(pids=pids, **others)
+   newr = expres.benchmarks.eval(pids=newp, **others)
+   pids.extend(newp)
+   results.update(newr)
 
 def accuracy(learner, f_in, f_mod):
    manager = Manager()

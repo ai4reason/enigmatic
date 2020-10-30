@@ -3,7 +3,7 @@ import subprocess
 import logging
 from sklearn.datasets import load_svmlight_file
 import numpy, scipy
-from pyprove import expres, par, log
+from pyprove import expres, par, log, human
 from . import enigmap
 
 DEFAULT_NAME = "00TRAINS"
@@ -25,15 +25,16 @@ def datafiles(f_in):
    return [z_data, z_label]
 
 def size(f_in):
-   if not os.path.isfile(f_in):
-      f_in = datafiles(f_in)[0]
+   z_data = datafiles(f_in)[0]
+   if os.path.isfile(z_data):
+      f_in = z_data
    return os.path.getsize(f_in)
 
 def format(f_in):
-   if os.path.isfile(f_in):
-      return "text/svm"
    if os.path.isfile(datafiles(f_in)[0]):
       return "binary/npz"
+   if os.path.isfile(f_in):
+      return "text/svm"
    return "unknown"
 
 def exist(f_in):
@@ -49,10 +50,14 @@ def load(f_in):
    return (data, label)
 
 def compress(f_in):
+   logger.debug("- loading %s" % f_in)
+   logger.debug("- uncompressed size: %s" % human.humanbytes(size(f_in)))
    (data, label) = load_svmlight_file(f_in, zero_based=True)
    (z_data, z_label) = datafiles(f_in)
+   logger.debug("- compressing to %s" % z_data)
    scipy.sparse.save_npz(z_data, data, compressed=True)
    numpy.savez_compressed(z_label, label=label)
+   logger.debug("- compressed size: %s" % human.humanbytes(size(f_in)))
 
 def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None):
    args = [
@@ -78,7 +83,7 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
    except subprocess.CalledProcessError as e:
       out = None
    if f_out and out:
-      with open(f_out, "wb") as f: f.write(out)
+      with open(f_out, "ab") as f: f.write(out)
    return out
 
 def makes(posnegs, bid, features, cores, callback, msg="[*]", d_info=None, **others):

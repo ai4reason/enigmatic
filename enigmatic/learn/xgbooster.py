@@ -24,7 +24,7 @@ class XGBoost(Learner):
       del self.params["num_round"]
 
    def efun(self):
-      return "EnigmaXgb"
+      return "EnigmaticXgb"
 
    def ext(self):
       return "xgb"
@@ -64,10 +64,12 @@ class XGBoost(Learner):
       
       callbacks = [lambda _: atiter()] if atiter else None
       logger.debug("- building xgb model %s" % f_mod)
+      logger.debug(log.data("- learning parameters:", self.params))
       if atstart: atstart()
       bst = xgb.train(self.params, dtrain, self.num_round, evals=[(dtrain, "training")], callbacks=callbacks)
       if atfinish: atfinish()
       logger.debug("- saving model %s" % f_mod)
+      #bst.set_param("num_feature", 4096)
       bst.save_model(f_mod)
       return bst
 
