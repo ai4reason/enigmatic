@@ -23,7 +23,7 @@ class LightGBM(Learner):
       Learner.__init__(self, self.params["num_round"])
 
    def efun(self):
-      return "EnigmaLgb"
+      return "EnigmaticLgb"
 
    def ext(self):
       return "lgb"

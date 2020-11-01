@@ -33,7 +33,7 @@ def build(learner, debug=[], **others):
    f_mod = filename(learner=learner, **others)
    os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
    enigmap.build(learner=learner, debug=debug, **others)
-   learner.params["num_feature"] = enigmap.load(learner=learner, **others)["count"]
+   #learner.params["num_feature"] = enigmap.load(learner=learner, **others)["count"]
    new = protos.build(model, learner=learner, debug=debug, **others)
    if os.path.isfile(f_mod) and not "force" in debug:
       logger.debug("- skipped building model %s" % f_mod)
