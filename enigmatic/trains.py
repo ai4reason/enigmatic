@@ -1,6 +1,6 @@
 import os, io
 import subprocess
-import logging
+import logging, random
 from sklearn.datasets import load_svmlight_file
 import numpy, scipy
 from pyprove import expres, par, log, human
@@ -86,7 +86,7 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
       with open(f_out, "ab") as f: f.write(out)
    return out
 
-def makes(posnegs, bid, features, cores, callback, msg="[*]", d_info=None, **others):
+def makes(posnegs, bid, features, cores, callback, msg="[+/-]", d_info=None, options=[], **others):
    def job(f_list):
       p = os.path.basename(f_list)[:-4]
       pos = f_list.endswith(".pos")
@@ -96,22 +96,22 @@ def makes(posnegs, bid, features, cores, callback, msg="[*]", d_info=None, **oth
       f_out = os.path.join(d_info, p+".in") if d_info else None
       return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
    jobs = list(map(job, posnegs))
-   par.apply(makesingle, jobs, cores=cores, barmsg="[POS/NEG]", 
-      callback=callback, chunksize=100)
+   barmsg = msg if not "headless" in options else None
+   par.apply(makesingle, jobs, cores=cores, barmsg=barmsg, 
+      callback=callback, chunksize=300)
 
-def make(d_posnegs, debug=[], **others):
+def make(d_posnegs, debug=[], split=False, **others):
    def save(res, bar):
       nonlocal out
       if res:
          out.write(res)
    d_in = path(**others)
    f_in = filename(**others)
-   logger.info("+ generating trains %s" % f_in)
+   logger.info("+ generating training files")
    os.system('mkdir -p "%s"' % d_in)
-   if exist(f_in) and not "force" in debug:
+   if (exist(f_in) or os.path.isfile(f_in)) and not "force" in debug:
       logger.debug("- skipped generating %s" % f_in)
       return
-   out = open(f_in, "wb")
    posnegs = []
    d_info = path(**others) if "train" in debug else None
    for d in d_posnegs:
@@ -121,7 +121,23 @@ def make(d_posnegs, debug=[], **others):
    logger.info("- found %s pos/neg files in %s directories" % 
       (len(posnegs), len(d_posnegs)))
    logger.debug("- directories: %s", d_posnegs)
-   makes(posnegs, callback=save, d_info=d_info, debug=debug, **others)
+
+   if split:
+      f_test = f_in+"-test.in"
+      logger.debug("- generating tests file %s" % f_test)
+      out = open(f_test, "wb")
+      random.shuffle(posnegs)
+      i = int(len(posnegs) * split)
+      posneg0 = posnegs[:i]
+      posneg1 = posnegs[i:]
+      makes(posneg0, callback=save, d_info=d_info, debug=debug, msg="[tst]", **others)
+      open(f_test+"-posnegs.txt","w").write("\n".join(posneg0))
+      posnegs = posneg1
+
+   logger.debug("- generating trains file %s" % f_in)
+   open(f_in+"-posnegs.txt","w").write("\n".join(posnegs))
+   out = open(f_in, "wb")
+   makes(posnegs, callback=save, d_info=d_info, debug=debug, msg="[trn]", **others)
    out.close()
    # compress data as numpy npz data
    if not "nozip" in debug:

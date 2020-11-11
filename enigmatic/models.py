@@ -26,7 +26,7 @@ def filename(learner, **others):
    f_mod = pathfile(f_file, learner=learner, **others)
    return f_mod
 
-def build(learner, debug=[], **others):
+def build(learner, debug=[], options=[], **others):
    f_in = os.path.join(trains.path(**others), "train.in") 
    model = name(learner=learner, **others)
    logger.info("+ building model %s" % model)
@@ -40,7 +40,7 @@ def build(learner, debug=[], **others):
       return new
    f_log = pathfile("train.log", learner=learner, **others)
    #learner.build(f_in, f_mod, f_log)
-   p = Process(target=learner.build, args=(f_in,f_mod,f_log))
+   p = Process(target=learner.build, args=(f_in,f_mod,f_log,options))
    p.start()
    p.join()
    return new

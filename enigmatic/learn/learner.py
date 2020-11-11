@@ -16,8 +16,7 @@ class Learner:
    
    def __init__(self, bar_round=None):
       self.stats = {}
-      # total for progress bar
-      self.bar_round = bar_round if log.BAR else None
+      self.bar_round = bar_round 
 
    def efun(self):
       "E Prover weight function name."
@@ -39,17 +38,18 @@ class Learner:
    def readlog(self, f_log):
       return
 
-   def build(self, f_in, f_mod, f_log):
+   def build(self, f_in, f_mod, f_log, options=[]):
       def atfinish():
          bar.finish()
          bar.file.flush()
       # progress bar
-      if self.bar_round:
+      if not "headless" in options:
          ProgressBar.file = None
-         bar = ProgressBar("[3/3]", max=self.bar_round)
+         bar = ProgressBar("[%s]"%self.ext(), max=self.bar_round)
          atstart = bar.start
          atiter = bar.next
       else:
+         logger.info("- building %s" % self.desc())
          (bar, atstart, atiter, atfinish) = (None, None, None, None)
       # standard output redirect
       redir = redirect.start(f_log, bar)

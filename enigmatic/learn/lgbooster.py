@@ -40,6 +40,8 @@ class LightGBM(Learner):
       return "%s(%s)" % (self.name(), args)
 
    def readlog(self, f_log):
+      if not os.path.isfile(f_log):
+         return
       losses = re.findall(r'\[(\d*)\].*logloss: (\d*.\d*)', open(f_log).read())
       if not losses:
          self.stats["model.loss"] = "error"
