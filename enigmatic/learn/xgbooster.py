@@ -1,4 +1,4 @@
-import re
+import re, os
 import logging
 import xgboost as xgb
 from .learner import Learner
@@ -41,6 +41,8 @@ class XGBoost(Learner):
       return "%s(%s, num_round=%s)" % (self.name(), args, self.num_round)
 
    def readlog(self, f_log):
+      if not os.path.isfile(f_log):
+         return
       losses = re.findall(r'\[(\d*)\].*error:(\d*.\d*)', open(f_log).read())
       if not losses:
          self.stats["model.loss"] = "error"
@@ -76,7 +78,6 @@ class XGBoost(Learner):
    def predict(self, f_in, f_mod):
       bst = xgb.Booster(model_file=f_mod)
       logger.debug("- loading training data %s" % f_in)
-      (xs, ys) = trains.load(f_in)
       (xs, ys) = trains.load(f_in)
       logger.debug("- predicting with xgb model %s" % f_mod)
       preds = bst.predict(xgb.DMatrix(xs), validate_features=False)
