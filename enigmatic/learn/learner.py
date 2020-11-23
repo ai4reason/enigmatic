@@ -86,3 +86,6 @@ class Learner:
       if ret is not None: ret["acc"] = acc
       return acc
 
+   def refit(self, f_in, f_mod, f_log, options=[]):
+      logger.info("- skipped refit of %s with %s" % (f_mod, f_in))
+

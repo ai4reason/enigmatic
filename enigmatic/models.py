@@ -1,4 +1,4 @@
-import os
+import os, shutil
 import json
 from multiprocessing import Process, Manager
 import logging
@@ -26,8 +26,26 @@ def filename(learner, **others):
    f_mod = pathfile(f_file, learner=learner, **others)
    return f_mod
 
-def build(learner, debug=[], options=[], **others):
-   f_in = os.path.join(trains.path(**others), "train.in") 
+def batchbuilds(f_in, f_mod, learner, options, **others):
+   n = 0
+   f_part = None
+   f_log = None
+   def nextbatch():
+      nonlocal n, f_part, f_log
+      n += 1
+      f_part = "%s-part%03d.in" % (f_in,n)
+      f_log = "%s-part%03d.in.log"
+   nextbatch()
+   while trains.exist(f_part) or os.path.isfile(f_part):
+      logger.info("- batch build refit with %s" % f_part)
+      shutil.copy(f_mod, "%s-part%03d"%(f_mod,n-1))
+      p = Process(target=learner.refit, args=(f_part,f_mod,f_log,options))
+      p.start()
+      p.join()
+      nextbatch()
+
+def build(learner, f_in=None, debug=[], options=[], **others):
+   f_in = f_in if f_in else trains.filename(**others)
    model = name(learner=learner, **others)
    logger.info("+ building model %s" % model)
    f_mod = filename(learner=learner, **others)
@@ -38,11 +56,13 @@ def build(learner, debug=[], options=[], **others):
    if os.path.isfile(f_mod) and not "force" in debug:
       logger.debug("- skipped building model %s" % f_mod)
       return new
+
    f_log = pathfile("train.log", learner=learner, **others)
    #learner.build(f_in, f_mod, f_log)
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,options))
    p.start()
    p.join()
+   #batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
    return new
 
 def loop(pids, results, nick, **others):

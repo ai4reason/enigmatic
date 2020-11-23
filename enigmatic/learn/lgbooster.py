@@ -84,3 +84,29 @@ class LightGBM(Learner):
       preds = bst.predict(xs, predict_disable_shape_check=True)
       return zip(preds, ys)
 
+   def refit(self, f_in, f_mod, f_log, options=[]):
+      logger.info("- refit %s with %s" % (f_mod, f_in))
+
+      logger.debug("- loading training data %s" % f_in)
+      (xs, ys) = trains.load(f_in)
+      dtrain = lgb.Dataset(xs, label=ys, free_raw_data=False)
+      dtrain.construct()
+      pos = sum(ys)
+      neg = len(ys) - pos
+      self.stats["train.count"] = len(ys)
+      self.stats["train.pos.count"] = int(pos)
+      self.stats["train.neg.count"] = int(neg)
+      self.params["scale_pos_weight"] = (neg/pos)
+
+      #callbacks = [lambda _: atiter()] if atiter else None
+      logger.debug("- building lgb model %s" % f_mod)
+      logger.debug(log.data("- learning parameters:", self.params))
+      #if atstart: atstart()
+      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=f_mod) #, callbacks=callbacks)
+      #if atfinish: atfinish()
+      logger.debug("- saving model %s" % f_mod)
+      bst.save_model(f_mod)
+      bst.free_dataset()
+      bst.free_network()
+      return bst
+

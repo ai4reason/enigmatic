@@ -16,8 +16,8 @@ def path(bid, limit, features, dataname, **others):
    tid = "%s-%s" % (bid, limit)
    return os.path.join(DEFAULT_DIR, tid, dataname, features)
 
-def filename(**others):
-   return os.path.join(path(**others), "train.in")
+def filename(prefix=None, **others):
+   return os.path.join(path(**others), "train.in" if not prefix else prefix)
 
 def datafiles(f_in):
    z_data = f_in + "-data.npz"
@@ -38,6 +38,7 @@ def format(f_in):
    return "unknown"
 
 def exist(f_in):
+   "True iff **compressed** data files exist"
    return all(map(os.path.isfile, datafiles(f_in)))
 
 def load(f_in):
@@ -86,7 +87,7 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
       with open(f_out, "ab") as f: f.write(out)
    return out
 
-def makes(posnegs, bid, features, cores, callback, msg="[+/-]", d_info=None, options=[], **others):
+def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, options=[], debug=[], chunksize=None, **others):
    def job(f_list):
       p = os.path.basename(f_list)[:-4]
       pos = f_list.endswith(".pos")
@@ -95,25 +96,53 @@ def makes(posnegs, bid, features, cores, callback, msg="[+/-]", d_info=None, opt
       f_buckets  = os.path.join(d_info, p+".json") if d_info else None
       f_out = os.path.join(d_info, p+".in") if d_info else None
       return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
+   def save(res, bar):
+      nonlocal out, count, written, parts, f_in, has_pos, has_neg
+      if not res: return
+      has_pos = has_pos or b"+" in res
+      has_neg = has_neg or b"-" in res
+      if written and chunksize and written >= chunksize and has_neg and has_neg:
+         out.close()
+         count += 1
+         f_in = "%s.in-part%03d.in" % (f_prfx, count)
+         out = open(f_in, "wb")
+         out.write(res)
+         parts.append(f_in)
+         written = 0
+         has_pos = b"+" in res
+         has_neg = b"-" in res
+      else:
+         out.write(res)
+         written += len(res)
+   logger.debug("- generating trains %s" % f_prfx)
+   f_in = "%s.in" % f_prfx
+   with open("%s-posnegs.txt"%f_in,"w") as f: f.write("\n".join(posnegs))
    jobs = list(map(job, posnegs))
    barmsg = msg if not "headless" in options else None
+   parts = [f_in]
+   out = open(f_in, "wb")
+   count = 0
+   written = 0
+   has_pos = False
+   has_neg = False
    par.apply(makesingle, jobs, cores=cores, barmsg=barmsg, 
-      callback=callback, chunksize=300)
+      callback=save, chunksize=100)
+   out.close()
+   if not (has_neg and has_pos):
+      logger.debug("- last part without both pos/negs; appending to the previous")
+      f_last = parts[-1]
+      parts = parts[:-1]
+      with open(parts[-1],"ab") as prev:
+         with open(f_last,"rb") as last:
+            prev.write(last.read())
+      os.remove(f_last)
+   if not "nozip" in debug:
+      for f in parts:
+         compress(f)
+         os.remove(f)
 
-def make(d_posnegs, debug=[], split=False, **others):
-   def save(res, bar):
-      nonlocal out
-      if res:
-         out.write(res)
-   d_in = path(**others)
-   f_in = filename(**others)
-   logger.info("+ generating training files")
-   os.system('mkdir -p "%s"' % d_in)
-   if (exist(f_in) or os.path.isfile(f_in)) and not "force" in debug:
-      logger.debug("- skipped generating %s" % f_in)
-      return
+def collect(d_posnegs, **others):
    posnegs = []
-   d_info = path(**others) if "train" in debug else None
    for d in d_posnegs:
       fs = [f for f in os.listdir(d) if f.endswith(".pos") or f.endswith(".neg")]
       fs = [os.path.join(d,f) for f in fs]
@@ -121,28 +150,31 @@ def make(d_posnegs, debug=[], split=False, **others):
    logger.info("- found %s pos/neg files in %s directories" % 
       (len(posnegs), len(d_posnegs)))
    logger.debug("- directories: %s", d_posnegs)
+   return posnegs
+
+def make(d_posnegs, debug=[], split=False, **others):
+   d_in = path(**others)
+   f_in = filename(**others)
+   logger.info("+ generating training files")
+   os.system('mkdir -p "%s"' % d_in)
+   if (exist(f_in) or os.path.isfile(f_in)) and not "force" in debug:
+      logger.debug("- skipped generating %s" % f_in)
+      return
+   d_info = path(**others) if "train" in debug else None
+   posnegs = collect(d_posnegs)
 
    if split:
-      f_test = f_in+"-test.in"
-      logger.debug("- generating tests file %s" % f_test)
-      out = open(f_test, "wb")
+      f_prfx = filename("test", **others)
+      logger.debug("- generating tests %s" % f_prfx)
       random.shuffle(posnegs)
       i = int(len(posnegs) * split)
       posneg0 = posnegs[:i]
-      posneg1 = posnegs[i:]
-      makes(posneg0, callback=save, d_info=d_info, debug=debug, msg="[tst]", **others)
-      open(f_test+"-posnegs.txt","w").write("\n".join(posneg0))
-      posnegs = posneg1
+      posnegs = posnegs[i:]
+      makes(posneg0, f_prfx, d_info=d_info, debug=debug, msg="[tst]", **others)
 
-   logger.debug("- generating trains file %s" % f_in)
-   open(f_in+"-posnegs.txt","w").write("\n".join(posnegs))
-   out = open(f_in, "wb")
-   makes(posnegs, callback=save, d_info=d_info, debug=debug, msg="[trn]", **others)
-   out.close()
-   # compress data as numpy npz data
-   if not "nozip" in debug:
-      compress(f_in)
-      os.remove(f_in)
+   f_prfx = filename("train", **others)
+   logger.debug("- generating trains %s" % f_prfx)
+   makes(posnegs, f_prfx, d_info=d_info, debug=debug, msg="[trn]", **others)
    enigmap.build(debug=["force"], path=path, **others)
 
 def build(pids, **others):
