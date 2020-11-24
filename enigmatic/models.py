@@ -62,7 +62,7 @@ def build(learner, f_in=None, debug=[], options=[], **others):
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,options))
    p.start()
    p.join()
-   #batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
+   batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
    return new
 
 def loop(pids, results, nick, **others):
