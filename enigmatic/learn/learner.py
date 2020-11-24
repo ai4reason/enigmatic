@@ -32,30 +32,32 @@ class Learner:
    def desc(self):
       return "default"
 
-   def train(self, f_in, f_mod, atstart=None, atiter=None, atfinish=None):
+   def train(self, f_in, f_mod, init_model=None, handlers=None):
       pass
 
    def readlog(self, f_log):
       return
 
-   def build(self, f_in, f_mod, f_log, options=[]):
+   def build(self, f_in, f_mod, f_log, options=[], init_model=None):
       def atfinish():
          bar.finish()
          bar.file.flush()
       # progress bar
-      if not "headless" in options:
+      if "headless" in options:
+         (bar, atstart, atiter, atfinish) = (None, None, None, None)
+      else:
          ProgressBar.file = None
          bar = ProgressBar("[%s]"%self.ext(), max=self.bar_round)
          atstart = bar.start
          atiter = bar.next
-      else:
-         logger.info("- building %s" % self.desc())
-         (bar, atstart, atiter, atfinish) = (None, None, None, None)
+         handlers = (atstart, atiter, atfinish)
+      logger.info("- building model %s" % f_mod)
+      logger.debug(log.data("- learning parameters:", self.params))
       # standard output redirect
       redir = redirect.start(f_log, bar)
       begin = time.time()
       try:
-         self.train(f_in, f_mod, atstart=atstart, atiter=atiter, atfinish=atfinish)
+         self.train(f_in, f_mod, init_model=init_model, handlers=handlers)
       except Exception as e:
          redirect.finish(*redir)
          raise e # raise after redirect so that stack trace is not lost

@@ -34,12 +34,12 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
       nonlocal n, f_part, f_log
       n += 1
       f_part = "%s-part%03d.in" % (f_in,n)
-      f_log = "%s-part%03d.in.log"
+      f_log = "%s-part%03d.log" % (f_mod,n)
    nextbatch()
    while trains.exist(f_part) or os.path.isfile(f_part):
-      logger.info("- batch build refit with %s" % f_part)
+      logger.info("- next batch build with %s" % f_part)
       shutil.copy(f_mod, "%s-part%03d"%(f_mod,n-1))
-      p = Process(target=learner.refit, args=(f_part,f_mod,f_log,options))
+      p = Process(target=learner.build, args=(f_part,f_mod,f_log,options,f_mod))
       p.start()
       p.join()
       nextbatch()
@@ -48,6 +48,7 @@ def build(learner, f_in=None, debug=[], options=[], **others):
    f_in = f_in if f_in else trains.filename(**others)
    model = name(learner=learner, **others)
    logger.info("+ building model %s" % model)
+   logger.info("- building with %s" % f_in)
    f_mod = filename(learner=learner, **others)
    os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
    enigmap.build(learner=learner, debug=debug, **others)
@@ -57,9 +58,8 @@ def build(learner, f_in=None, debug=[], options=[], **others):
       logger.debug("- skipped building model %s" % f_mod)
       return new
 
-   f_log = pathfile("train.log", learner=learner, **others)
-   #learner.build(f_in, f_mod, f_log)
-   p = Process(target=learner.build, args=(f_in,f_mod,f_log,options))
+   f_log = "%s-part000.log" % f_mod
+   p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None))
    p.start()
    p.join()
    batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)

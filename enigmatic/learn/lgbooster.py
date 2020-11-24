@@ -52,10 +52,10 @@ class LightGBM(Learner):
       self.stats["model.last.loss"] = [losses[last], last]
       self.stats["model.best.loss"] = [losses[best], best]
 
-   def train(self, f_in, f_mod, atstart=None, atiter=None, atfinish=None):
-      logger.debug("- loading training data %s" % f_in)
+   def train(self, f_in, f_mod, init_model=None, handlers=None):
+      (atstart, atiter, atfinish) = handlers if handlers else (None,None,None)
       (xs, ys) = trains.load(f_in)
-      dtrain = lgb.Dataset(xs, label=ys)
+      dtrain = lgb.Dataset(xs, label=ys, free_raw_data=(init_model is None))
       dtrain.construct()
       pos = sum(ys)
       neg = len(ys) - pos
@@ -65,12 +65,9 @@ class LightGBM(Learner):
       self.params["scale_pos_weight"] = (neg/pos)
 
       callbacks = [lambda _: atiter()] if atiter else None
-      logger.debug("- building lgb model %s" % f_mod)
-      logger.debug(log.data("- learning parameters:", self.params))
       if atstart: atstart()
-      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], callbacks=callbacks)
+      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=init_model, callbacks=callbacks)
       if atfinish: atfinish()
-      logger.debug("- saving model %s" % f_mod)
       bst.save_model(f_mod)
       bst.free_dataset()
       bst.free_network()
@@ -83,30 +80,4 @@ class LightGBM(Learner):
       logger.debug("- predicting with lgb model %s" % f_mod)
       preds = bst.predict(xs, predict_disable_shape_check=True)
       return zip(preds, ys)
-
-   def refit(self, f_in, f_mod, f_log, options=[]):
-      logger.info("- refit %s with %s" % (f_mod, f_in))
-
-      logger.debug("- loading training data %s" % f_in)
-      (xs, ys) = trains.load(f_in)
-      dtrain = lgb.Dataset(xs, label=ys, free_raw_data=False)
-      dtrain.construct()
-      pos = sum(ys)
-      neg = len(ys) - pos
-      self.stats["train.count"] = len(ys)
-      self.stats["train.pos.count"] = int(pos)
-      self.stats["train.neg.count"] = int(neg)
-      self.params["scale_pos_weight"] = (neg/pos)
-
-      #callbacks = [lambda _: atiter()] if atiter else None
-      logger.debug("- building lgb model %s" % f_mod)
-      logger.debug(log.data("- learning parameters:", self.params))
-      #if atstart: atstart()
-      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=f_mod) #, callbacks=callbacks)
-      #if atfinish: atfinish()
-      logger.debug("- saving model %s" % f_mod)
-      bst.save_model(f_mod)
-      bst.free_dataset()
-      bst.free_network()
-      return bst
 
