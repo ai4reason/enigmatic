@@ -102,6 +102,7 @@ def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, optio
       has_pos = has_pos or b"+" in res
       has_neg = has_neg or b"-" in res
       if written and chunksize and written >= chunksize and has_neg and has_neg:
+         #dump(out, f_in)
          out.close()
          count += 1
          f_in = "%s.in-part%03d.in" % (f_prfx, count)
@@ -173,7 +174,6 @@ def make(d_posnegs, debug=[], split=False, **others):
       makes(posneg0, f_prfx, d_info=d_info, debug=debug, msg="[tst]", **others)
 
    f_prfx = filename("train", **others)
-   logger.debug("- generating trains %s" % f_prfx)
    makes(posnegs, f_prfx, d_info=d_info, debug=debug, msg="[trn]", **others)
    enigmap.build(debug=["force"], path=path, **others)
 
