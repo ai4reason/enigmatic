@@ -63,10 +63,12 @@ class LightGBM(Learner):
       self.stats["train.pos.count"] = int(pos)
       self.stats["train.neg.count"] = int(neg)
       self.params["scale_pos_weight"] = (neg/pos)
+      #self.params["is_unbalance"] = True
 
       callbacks = [lambda _: atiter()] if atiter else None
       if atstart: atstart()
-      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=init_model, callbacks=callbacks)
+      #eta = self.params["learning_rate"]
+      bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=init_model, callbacks=callbacks) #, learning_rates=lambda iter: 0.1*(0.95**iter))
       if atfinish: atfinish()
       bst.save_model(f_mod)
       bst.free_dataset()

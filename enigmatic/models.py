@@ -37,6 +37,7 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
       f_log = "%s-part%03d.log" % (f_mod,n)
    nextbatch()
    while trains.exist(f_part) or os.path.isfile(f_part):
+      #learner.params["learning_rate"] = learner.params["learning_rate"]*0.1
       logger.info("- next batch build with %s" % f_part)
       shutil.copy(f_mod, "%s-part%03d"%(f_mod,n-1))
       p = Process(target=learner.build, args=(f_part,f_mod,f_log,options,f_mod))

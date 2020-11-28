@@ -60,7 +60,31 @@ def compress(f_in):
    numpy.savez_compressed(z_label, label=label)
    logger.debug("- compressed size: %s" % human.humanbytes(size(f_in)))
 
-def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None):
+def forgetting(lines, forget):
+   if forget is None:
+      return lines
+   def duplicates(line):
+      nonlocal cache, lines
+      if not line in cache:
+         cache[line] = lines.count(line)
+      return cache[line]
+   
+   lines = lines.decode()
+   lines = lines.strip().split("\n")
+   if forget:
+      cache = {}
+      [duplicates(l) for l in lines] 
+      lines = sorted(set(lines), key=duplicates, reverse=True)
+      idx = int((1.0-forget)*len(lines))
+      idx = min(len(lines),max(1,idx))
+      lines = lines[:idx]
+   else:
+      lines = list(set(lines))
+   lines = "\n".join(lines)+"\n"
+   lines = lines.encode()
+   return lines
+
+def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None, forget=0.0):
    args = [
       "enigmatic-features", 
       "--free-numbers", 
@@ -82,12 +106,13 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
    try:
       out = subprocess.check_output(args)
    except subprocess.CalledProcessError as e:
-      out = None
-   if f_out and out:
+      return None
+   out = forgetting(out, forget)
+   if f_out:
       with open(f_out, "ab") as f: f.write(out)
    return out
 
-def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, options=[], debug=[], chunksize=None, **others):
+def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, options=[], debug=[], chunksize=None, forgets=(None,None), **others):
    def job(f_list):
       p = os.path.basename(f_list)[:-4]
       pos = f_list.endswith(".pos")
@@ -95,7 +120,8 @@ def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, optio
       f_map = os.path.join(d_info, p+".map") if d_info else None
       f_buckets  = os.path.join(d_info, p+".json") if d_info else None
       f_out = os.path.join(d_info, p+".in") if d_info else None
-      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos)
+      forget = forgets[int(pos)]
+      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos, forget)
    def save(res, bar):
       nonlocal out, count, written, parts, f_in, has_pos, has_neg
       if not res: return
