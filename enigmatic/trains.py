@@ -16,8 +16,13 @@ def path(bid, limit, features, dataname, **others):
    tid = "%s-%s" % (bid, limit)
    return os.path.join(DEFAULT_DIR, tid, dataname, features)
 
-def filename(prefix=None, **others):
-   return os.path.join(path(**others), "train.in" if not prefix else prefix)
+#def filename(prefix=None, **others):
+#   return os.path.join(path(**others), "train.in" if not prefix else prefix)
+
+def filename(f_name="train.in", part=None, **others):
+   if part is not None:
+      f_name = os.path.join("part%03d"%part, f_name)
+   return os.path.join(path(**others), f_name)
 
 def datafiles(f_in):
    z_data = f_in + "-data.npz"
@@ -112,7 +117,8 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
       with open(f_out, "ab") as f: f.write(out)
    return out
 
-def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, options=[], debug=[], chunksize=None, forgets=(None,None), **others):
+def makes(posnegs, f_name, bid, features, cores, msg="[+/-]", d_info=None, options=[], debug=[], batchsize=None, forgets=(None,None), **others):
+   others = dict(others, bid=bid, features=features, cores=cores, options=options, debug=debug, batchsize=batchsize, forgets=forgets)
    def job(f_list):
       p = os.path.basename(f_list)[:-4]
       pos = f_list.endswith(".pos")
@@ -123,46 +129,33 @@ def makes(posnegs, f_prfx, bid, features, cores, msg="[+/-]", d_info=None, optio
       forget = forgets[int(pos)]
       return (f_list, features, f_problem, f_map, f_buckets, f_out, pos, forget)
    def save(res, bar):
-      nonlocal out, count, written, parts, f_in, has_pos, has_neg
+      nonlocal out, part, written, parts, f_in
       if not res: return
-      has_pos = has_pos or b"+" in res
-      has_neg = has_neg or b"-" in res
-      if written and chunksize and written >= chunksize and has_neg and has_neg:
+      if written and batchsize and written >= batchsize:
          #dump(out, f_in)
          out.close()
-         count += 1
-         f_in = "%s.in-part%03d.in" % (f_prfx, count)
+         part += 1
+         f_in = filename(f_name, part, **others)
+         os.system('mkdir -p "%s"' % os.path.dirname(f_in))
          out = open(f_in, "wb")
          out.write(res)
          parts.append(f_in)
          written = 0
-         has_pos = b"+" in res
-         has_neg = b"-" in res
       else:
          out.write(res)
          written += len(res)
-   logger.debug("- generating trains %s" % f_prfx)
-   f_in = "%s.in" % f_prfx
-   with open("%s-posnegs.txt"%f_in,"w") as f: f.write("\n".join(posnegs))
+   logger.debug("- generating %s vectors in %s" % (f_name, path(**others)))
+   part = 0
+   f_in = filename(f_name, part, **others)
+   os.system('mkdir -p "%s"' % os.path.dirname(f_in))
+   with open(filename("%s-posnegs.txt"%f_name,**others),"w") as f: f.write("\n".join(posnegs))
    jobs = list(map(job, posnegs))
    barmsg = msg if not "headless" in options else None
    parts = [f_in]
    out = open(f_in, "wb")
-   count = 0
    written = 0
-   has_pos = False
-   has_neg = False
-   par.apply(makesingle, jobs, cores=cores, barmsg=barmsg, 
-      callback=save, chunksize=100)
+   par.apply(makesingle, jobs, cores=cores, barmsg=barmsg, callback=save, chunksize=100)
    out.close()
-   if not (has_neg and has_pos):
-      logger.debug("- last part without both pos/negs; appending to the previous")
-      f_last = parts[-1]
-      parts = parts[:-1]
-      with open(parts[-1],"ab") as prev:
-         with open(f_last,"rb") as last:
-            prev.write(last.read())
-      os.remove(f_last)
    if not "nozip" in debug:
       for f in parts:
          compress(f)
@@ -181,7 +174,7 @@ def collect(d_posnegs, **others):
 
 def make(d_posnegs, debug=[], split=False, **others):
    d_in = path(**others)
-   f_in = filename(**others)
+   f_in = filename(part=0, **others)
    logger.info("+ generating training files")
    os.system('mkdir -p "%s"' % d_in)
    if (exist(f_in) or os.path.isfile(f_in)) and not "force" in debug:
@@ -191,16 +184,13 @@ def make(d_posnegs, debug=[], split=False, **others):
    posnegs = collect(d_posnegs)
 
    if split:
-      f_prfx = filename("test", **others)
-      logger.debug("- generating tests %s" % f_prfx)
       random.shuffle(posnegs)
       i = int(len(posnegs) * split)
       posneg0 = posnegs[:i]
       posnegs = posnegs[i:]
-      makes(posneg0, f_prfx, d_info=d_info, debug=debug, msg="[tst]", **others)
+      makes(posneg0, "test.in", d_info=d_info, debug=debug, msg="[tst]", **others)
 
-   f_prfx = filename("train", **others)
-   makes(posnegs, f_prfx, d_info=d_info, debug=debug, msg="[trn]", **others)
+   makes(posnegs, "train.in", d_info=d_info, debug=debug, msg="[trn]", **others)
    enigmap.build(debug=["force"], path=path, **others)
 
 def build(pids, **others):

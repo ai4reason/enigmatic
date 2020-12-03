@@ -20,9 +20,11 @@ def path(**others):
 def pathfile(f_file, **others):
    return os.path.join(path(**others), f_file)
 
-def filename(learner, **others):
+def filename(learner, part=None, **others):
    model = name(learner=learner, **others)
    f_file = "model.%s" % learner.ext()
+   if part is not None:
+      f_file = os.path.join("part%03d"%part, f_file)
    f_mod = pathfile(f_file, learner=learner, **others)
    return f_mod
 
@@ -33,20 +35,22 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
    def nextbatch():
       nonlocal n, f_part, f_log
       n += 1
-      f_part = "%s-part%03d.in" % (f_in,n)
-      f_log = "%s-part%03d.log" % (f_mod,n)
+      f_part = trains.filename(part=n, **others)
+      f_log = filename(learner=learner, part=n, **others) + ".log"
    nextbatch()
    while trains.exist(f_part) or os.path.isfile(f_part):
       #learner.params["learning_rate"] = learner.params["learning_rate"]*0.1
       logger.info("- next batch build with %s" % f_part)
-      shutil.copy(f_mod, "%s-part%03d"%(f_mod,n-1))
+      os.system('mkdir -p "%s"' % os.path.dirname(f_log))
+      f_piece = filename(learner=learner, part=n-1, **others)
+      shutil.copy(f_mod, f_piece)
       p = Process(target=learner.build, args=(f_part,f_mod,f_log,options,f_mod))
       p.start()
       p.join()
       nextbatch()
 
 def build(learner, f_in=None, debug=[], options=[], **others):
-   f_in = f_in if f_in else trains.filename(**others)
+   f_in = f_in if f_in else trains.filename(part=0, **others)
    model = name(learner=learner, **others)
    logger.info("+ building model %s" % model)
    logger.info("- building with %s" % f_in)
@@ -59,7 +63,8 @@ def build(learner, f_in=None, debug=[], options=[], **others):
       logger.debug("- skipped building model %s" % f_mod)
       return new
 
-   f_log = "%s-part000.log" % f_mod
+   f_log = filename(learner=learner, part=0, **others) + ".log"
+   os.system('mkdir -p "%s"' % os.path.dirname(f_log))
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None))
    p.start()
    p.join()
