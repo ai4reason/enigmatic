@@ -90,7 +90,7 @@ class Learner:
       neg = [(x,y) for (x,y) in preds if y==0]
       negacc = getacc(neg)
 
-      logger.debug("- predictions: %d" % (len(preds), len(pos), len(neg)))
+      logger.debug("- predictions: %d (%d / %d)" % (len(preds), len(pos), len(neg)))
       logger.debug("- accuracy: %.2f (%.2f / %.2f)" % (100*acc, 100*posacc, 100*negacc))
       if ret is not None: 
          ret["acc"] = acc
