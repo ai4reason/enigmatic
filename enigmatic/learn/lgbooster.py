@@ -63,7 +63,7 @@ class LightGBM(Learner):
       (atstart, atiter, atfinish) = handlers if handlers else (None,None,None)
       (xs, ys) = trains.load(f_in)
       dtrain = lgb.Dataset(xs, label=ys, free_raw_data=(init_model is None))
-      dtrain.construct()
+      #dtrain.construct()
       pos = sum(ys)
       neg = len(ys) - pos
       self.stats["train.count"] = len(ys)
