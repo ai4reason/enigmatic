@@ -80,12 +80,22 @@ class Learner:
       return []
 
    def accuracy(self, f_in, f_mod, ret=None):
+      def getacc(pairs):
+         return sum([1 for (x,y) in pairs if int(x>0.5)==y]) / len(pairs)
+
       preds = list(self.predict(f_in, f_mod))
-      logger.debug("- predictions: %d", len(preds))
-      acc = sum([1 for (x,y) in preds if int(x>0.5)==y])
-      acc /= len(preds)
-      logger.debug("- accuracy: %f" % acc)
-      if ret is not None: ret["acc"] = acc
+      acc = getacc(preds)
+      pos = [(x,y) for (x,y) in preds if y==1]
+      posacc = getacc(pos)
+      neg = [(x,y) for (x,y) in preds if y==0]
+      negacc = getacc(neg)
+
+      logger.debug("- predictions: %d" % (len(preds), len(pos), len(neg))
+      logger.debug("- accuracy: %.2f (%.2f / %.2f)" % (100*acc, 100*posacc, 100*negacc))
+      if ret is not None: 
+         ret["acc"] = acc
+         ret["acc:pos"] = posacc
+         ret["acc:neg"] = negacc
       return acc
 
    def refit(self, f_in, f_mod, f_log, options=[]):
