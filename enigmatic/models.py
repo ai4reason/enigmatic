@@ -49,7 +49,7 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
       p.join()
       nextbatch()
 
-def build(learner, f_in=None, debug=[], options=[], **others):
+def build(learner, f_in=None, split=False, debug=[], options=[], **others):
    f_in = f_in if f_in else trains.filename(part=0, **others)
    model = name(learner=learner, **others)
    logger.info("+ building model %s" % model)
@@ -68,6 +68,14 @@ def build(learner, f_in=None, debug=[], options=[], **others):
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None))
    p.start()
    p.join()
+
+   if "acc" in debug:
+      accuracy(learner, f_in, f_mod)
+      if split:
+         f_test = trains.filename(f_name="test.in", part=0, **others)
+         if os.path.isfile(f_test) or trains.exist(f_test):
+            accuracy(learner, f_test, f_mod)
+
    batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
    return new
 
