@@ -12,7 +12,9 @@ DEFAULTS = {
    'learning_rate': 0.2, 
    'objective': 'binary', 
    'num_round': 150,
-   'num_leaves': 300
+   'num_leaves': 300,
+   'min_data': 20,
+   'max_bin': 255,
 }
 
 class LightGBM(Learner):
@@ -32,7 +34,12 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      return "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate).2f" % self.params
+      d = "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate).2f" % self.params
+      if self.params["min_data"] != DEFAULTS["min_data"]:
+         d += "-min%(min_data)d" % self.params
+      if self.params["max_bin"] != DEFAULTS["max_bin"]:
+         d += "-max%(max_bin)d" % self.params
+      return d
 
    def __repr__(self):
       args = ["%s=%s"%(x,self.params[x]) for x in self.params]
