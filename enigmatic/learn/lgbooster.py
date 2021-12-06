@@ -59,7 +59,7 @@ class LightGBM(Learner):
       self.stats["model.last.loss"] = [losses[last], last]
       self.stats["model.best.loss"] = [losses[best], best]
 
-   def train(self, f_in, f_mod, init_model=None, handlers=None):
+   def train(self, f_in, f_mod=None, init_model=None, handlers=None):
       (atstart, atiter, atfinish) = handlers if handlers else (None,None,None)
       (xs, ys) = trains.load(f_in)
       dtrain = lgb.Dataset(xs, label=ys, free_raw_data=(init_model is None))
@@ -77,9 +77,10 @@ class LightGBM(Learner):
       #eta = self.params["learning_rate"]
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=init_model, callbacks=callbacks) #, learning_rates=lambda iter: 0.1*(0.95**iter))
       if atfinish: atfinish()
-      bst.save_model(f_mod)
-      bst.free_dataset()
-      bst.free_network()
+      if f_mod:
+         bst.save_model(f_mod)
+         bst.free_dataset()
+         bst.free_network()
       return bst
 
    def predict(self, f_in, f_mod):
