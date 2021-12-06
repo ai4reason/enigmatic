@@ -79,11 +79,14 @@ def build(learner, f_in=None, split=False, debug=[], options=[], **others):
    batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
    return new
 
-def loop(pids, results, nick, **others):
+def loop(pids, results, nick, refs, **others):
    others["dataname"] += "/" + nick
-   trains.build(pids=pids, **others)
-   newp = build(pids=pids, **others)
-   newr = expres.benchmarks.eval(pids=newp, **others)
+   trains.build(pids=pids, refs=refs, **others)
+   newp = build(pids=pids, refs=refs, **others)
+   if refs and len(refs) > 1:
+      # loop with coop strategies only when two or more refs are provided
+      newp = [p for p in newp if "coop" in p]
+   newr = expres.benchmarks.eval(pids=newp, refs=refs, **others)
    pids.extend(newp)
    results.update(newr)
 
