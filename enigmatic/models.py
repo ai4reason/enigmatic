@@ -11,8 +11,9 @@ DEFAULT_DIR = os.getenv("ENIGMA_ROOT", DEFAULT_NAME)
 
 logger = logging.getLogger(__name__)
 
-def name(bid, limit, dataname, features, learner, **others):
-   return "%s-%s/%s/%s/%s" % (bid.replace("/","-"), limit, dataname, features, learner.desc())
+def name(learner, **others):
+   others = dict(others, learner=learner)
+   return os.path.join(trains.name(**others), learner.desc())
 
 def path(**others):
    return os.path.join(DEFAULT_DIR, name(**others))
@@ -50,20 +51,21 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
       nextbatch()
 
 def build(learner, f_in=None, split=False, debug=[], options=[], **others):
+   others = dict(others, learner=learner, split=split, debug=debug, options=options)
    f_in = f_in if f_in else trains.filename(part=0, **others)
-   model = name(learner=learner, **others)
+   model = name(**others)
    logger.info("+ building model %s" % model)
    logger.info("- building with %s" % f_in)
-   f_mod = filename(learner=learner, **others)
+   f_mod = filename(**others)
    os.system('mkdir -p "%s"' % os.path.dirname(f_mod))
-   enigmap.build(learner=learner, debug=debug, **others)
+   enigmap.build(**others)
    #learner.params["num_feature"] = enigmap.load(learner=learner, **others)["count"]
-   new = protos.build(model, learner=learner, debug=debug, **others)
+   new = protos.build(model, **others)
    if os.path.isfile(f_mod) and not "force" in debug:
       logger.debug("- skipped building model %s" % f_mod)
       return new
 
-   f_log = filename(learner=learner, part=0, **others) + ".log"
+   f_log = filename(part=0, **others) + ".log"
    os.system('mkdir -p "%s"' % os.path.dirname(f_log))
    p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None))
    p.start()
@@ -76,7 +78,7 @@ def build(learner, f_in=None, split=False, debug=[], options=[], **others):
          if os.path.isfile(f_test) or trains.exist(f_test):
             accuracy(learner, f_test, f_mod)
 
-   batchbuilds(f_in, f_mod, learner=learner, debug=debug, options=options, **others)
+   batchbuilds(f_in, f_mod, **others)
    return new
 
 def loop(pids, results, nick, refs, **others):

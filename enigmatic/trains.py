@@ -11,10 +11,17 @@ DEFAULT_DIR = os.getenv("PYPROVE_TRAINS", DEFAULT_NAME)
 
 logger = logging.getLogger(__name__)
 
-def path(bid, limit, features, dataname, **others):
-   bid = bid.replace("/","-")
-   tid = "%s-%s" % (bid, limit)
-   return os.path.join(DEFAULT_DIR, tid, dataname, features)
+def name(bid, limit, features, dataname, split=False, forgets=(None,None), **others):
+   tid = "%s-%s" % (bid.replace("/","-"), limit)
+   trainname = features
+   if split:
+      trainname = "%s-spl%s" % (trainname, split)
+   if forgets != (None,None):
+      trainname = "%s-for%sget%s" % (trainname, forgets[0], forgets[1])
+   return os.path.join(tid, dataname, trainname)
+
+def path(**others):
+   return os.path.join(DEFAULT_DIR, name(**others))
 
 #def filename(prefix=None, **others):
 #   return os.path.join(path(**others), "train.in" if not prefix else prefix)
@@ -173,6 +180,7 @@ def collect(d_posnegs, **others):
    return posnegs
 
 def make(d_posnegs, debug=[], split=False, **others):
+   others = dict(others, debug=debug, split=split)
    d_in = path(**others)
    f_in = filename(part=0, **others)
    logger.info("+ generating training files")
@@ -188,10 +196,10 @@ def make(d_posnegs, debug=[], split=False, **others):
       i = int(len(posnegs) * split)
       posneg0 = posnegs[:i]
       posnegs = posnegs[i:]
-      makes(posneg0, "test.in", d_info=d_info, debug=debug, msg="[tst]", **others)
+      makes(posneg0, "test.in", d_info=d_info, msg="[tst]", **others)
 
-   makes(posnegs, "train.in", d_info=d_info, debug=debug, msg="[trn]", **others)
-   enigmap.build(debug=["force"], path=path, **others)
+   makes(posnegs, "train.in", d_info=d_info, msg="[trn]", **others)
+   enigmap.build(path=path, **dict(others, debug=["force"]))
 
 def build(pids, **others):
    d_posnegs = [expres.results.dir(pid=pid, **others) for pid in pids]
