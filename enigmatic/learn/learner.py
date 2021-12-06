@@ -74,13 +74,14 @@ class Learner:
          json.dump(self.stats, f, indent=3, sort_keys=True)
       with open("%s-params.json"%f_log,"w") as f: 
          json.dump(self.params, f, indent=3, sort_keys=True)
-      logger.info(log.data("- training statistics: ", self.stats))
 
    def predict(self, f_in, f_mod):
       return []
 
    def accuracy(self, f_in, f_mod, ret=None):
       def getacc(pairs):
+         if not pairs:
+            return 0
          return sum([1 for (x,y) in pairs if int(x>0.5)==y]) / len(pairs)
 
       preds = list(self.predict(f_in, f_mod))
@@ -90,13 +91,10 @@ class Learner:
       neg = [(x,y) for (x,y) in preds if y==0]
       negacc = getacc(neg)
 
-      logger.debug("- predictions: %d (%d / %d)" % (len(preds), len(pos), len(neg)))
-      logger.debug("- accuracy: %.2f (%.2f / %.2f)" % (100*acc, 100*posacc, 100*negacc))
       if ret is not None: 
-         ret["acc"] = acc
-         ret["acc:pos"] = posacc
-         ret["acc:neg"] = negacc
-      return acc
+         ret["acc"] = (acc, posacc, negacc)
+         ret["counts"] = (len(preds), len(pos), len(neg))
+      return (acc, posacc, negacc)
 
    def refit(self, f_in, f_mod, f_log, options=[]):
       logger.info("- skipped refit of %s with %s" % (f_mod, f_in))

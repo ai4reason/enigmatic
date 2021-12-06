@@ -71,15 +71,24 @@ def build(learner, f_in=None, split=False, debug=[], options=[], **others):
    p.start()
    p.join()
 
-   if "acc" in debug:
-      accuracy(learner, f_in, f_mod)
-      if split:
-         f_test = trains.filename(f_name="test.in", part=0, **others)
-         if os.path.isfile(f_test) or trains.exist(f_test):
-            accuracy(learner, f_test, f_mod)
-
    batchbuilds(f_in, f_mod, **others)
+   statistics(f_in, f_mod, f_log, **others)
    return new
+
+def statistics(f_in, f_mod, f_log, learner, split, debug, **others):
+   others = dict(others, learner=learner, split=split, debug=debug)
+   f_stats = "%s-stats.json" % f_log
+   stats = json.load(open(f_stats))
+   if "acc" in debug:
+      ret = accuracy(learner, f_in, f_mod)
+      stats["train.acc"] = ret["acc"]
+      f_test = trains.filename(f_name="test.in", part=0, **others)
+      if split and (os.path.isfile(f_test) or trains.exist(f_test)):
+         ret = accuracy(learner, f_test, f_mod)
+         stats["test.acc"] = ret["acc"]
+         stats["test.counts"] = ret["counts"]
+   with open(f_stats,"w") as f: json.dump(stats, f, indent=3, sort_keys=True)
+   logger.info(log.data("- training statistics: ", stats))
 
 def loop(pids, results, nick, refs, **others):
    others["dataname"] += "/" + nick
@@ -98,5 +107,5 @@ def accuracy(learner, f_in, f_mod):
    p = Process(target=learner.accuracy, args=(f_in,f_mod,ret))
    p.start()
    p.join()
-   return ret["acc"]
+   return dict(ret)
 

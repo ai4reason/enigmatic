@@ -66,9 +66,7 @@ class LightGBM(Learner):
       #dtrain.construct()
       pos = sum(ys)
       neg = len(ys) - pos
-      self.stats["train.count"] = len(ys)
-      self.stats["train.pos.count"] = int(pos)
-      self.stats["train.neg.count"] = int(neg)
+      self.stats["train.counts"] = (len(ys), int(pos), int(neg))
       self.params["scale_pos_weight"] = (neg/pos)
       #self.params["is_unbalance"] = True
 
