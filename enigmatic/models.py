@@ -90,16 +90,21 @@ def statistics(f_in, f_mod, f_log, learner, split, debug, **others):
    with open(f_stats,"w") as f: json.dump(stats, f, indent=3, sort_keys=True)
    logger.info(log.data("- training statistics: ", stats))
 
-def loop(pids, results, nick, refs, **others):
-   others["dataname"] += "/" + nick
-   trains.build(pids=pids, refs=refs, **others)
-   newp = build(pids=pids, refs=refs, **others)
-   if refs and len(refs) > 1:
-      # loop with coop strategies only when two or more refs are provided
+def loop1(nick, pids, results, dataname, options=[], **others):
+   others = dict(others, pids=pids, results=results, options=options, dataname=os.path.join(dataname,nick))
+   trains.build(**others)
+   newp = build(**others)
+   if "loop-coop-only" in options:
       newp = [p for p in newp if "coop" in p]
-   newr = expres.benchmarks.eval(pids=newp, refs=refs, **others)
+   newr = expres.benchmarks.eval(**dict(others, pids=newp))
    pids.extend(newp)
    results.update(newr)
+
+def loops(iters=6, results={}, **others):
+   others = dict(others, results=results)
+   results.update(expres.benchmarks.eval(**others))
+   for n in range(iters):
+      loop1("loop%02d"%n, **others)
 
 def accuracy(learner, f_in, f_mod):
    manager = Manager()

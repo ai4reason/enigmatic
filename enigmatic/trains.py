@@ -179,6 +179,19 @@ def collect(d_posnegs, **others):
    logger.debug("- directories: %s", d_posnegs)
    return posnegs
 
+def splits(posnegs, split, **others):
+   problems = {}
+   for posneg in posnegs:
+      p = os.path.basename(posneg)[:-4]
+      if p not in problems: problems[p] = []
+      problems[p].append(posneg)
+   ps = list(problems.keys())
+   random.shuffle(ps)
+   i = max(1, int(len(ps) * split))
+   posneg0 = [x for p in ps[:i] for x in problems[p]]
+   posneg1 = [x for p in ps[i:] for x in problems[p]]
+   return (posneg0, posneg1)
+
 def make(d_posnegs, debug=[], split=False, **others):
    others = dict(others, debug=debug, split=split)
    d_in = path(**others)
@@ -192,10 +205,7 @@ def make(d_posnegs, debug=[], split=False, **others):
    posnegs = collect(d_posnegs)
 
    if split:
-      random.shuffle(posnegs)
-      i = int(len(posnegs) * split)
-      posneg0 = posnegs[:i]
-      posnegs = posnegs[i:]
+      (posneg0, posnegs) = splits(posnegs, **others)
       makes(posneg0, "test.in", d_info=d_info, msg="[tst]", **others)
 
    makes(posnegs, "train.in", d_info=d_info, msg="[trn]", **others)

@@ -8,13 +8,30 @@ from .. import trains
 logger = logging.getLogger(__name__)
 
 DEFAULTS = {
-   'max_depth': 9, 
-   'learning_rate': 0.2, 
+   'learning_rate': 0.15, 
    'objective': 'binary', 
    'num_round': 150,
+   'max_depth': 9, 
    'num_leaves': 300,
+   # default values from the docs:
    'min_data': 20,
    'max_bin': 255,
+   'feature_fraction': 1.0,
+   'bagging_fraction': 1.0,
+   'bagging_freq': 0,
+   'lambda_l1': 0.0,
+   'lambda_l2': 0.0,
+}
+
+# non-default values of these will influence model name
+RELEVANT = {
+   'min_data': 'min',
+   'max_bin': 'max',
+   'feature_fraction': 'ff',
+   'bagging_fraction': 'bf',
+   'bagging_freq': 'sf',
+   'lambda_l1': '1l',
+   'lambda_l2': '2l',
 }
 
 class LightGBM(Learner):
@@ -34,11 +51,14 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      d = "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate).2f" % self.params
-      if self.params["min_data"] != DEFAULTS["min_data"]:
-         d += "-min%(min_data)d" % self.params
-      if self.params["max_bin"] != DEFAULTS["max_bin"]:
-         d += "-max%(max_bin)d" % self.params
+      d = "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)f" % self.params
+      for p in RELEVANT:
+         if self.params[p] != DEFAULTS[p]:
+            d += "-%s%s" % (RELEVANT[p], self.params[p])
+      #if self.params["min_data"] != DEFAULTS["min_data"]:
+      #   d += "-min%(min_data)d" % self.params
+      #if self.params["max_bin"] != DEFAULTS["max_bin"]:
+      #   d += "-max%(max_bin)d" % self.params
       return d
 
    def __repr__(self):
@@ -70,7 +90,7 @@ class LightGBM(Learner):
       self.params["scale_pos_weight"] = (neg/pos)
       #self.params["is_unbalance"] = True
 
-      callbacks = [lambda _: atiter()] if atiter else None
+      callbacks = [lambda _: atiter(), lgb.log_evaluation(1)] if atiter else None
       if atstart: atstart()
       #eta = self.params["learning_rate"]
       bst = lgb.train(self.params, dtrain, valid_sets=[dtrain], init_model=init_model, callbacks=callbacks) #, learning_rates=lambda iter: 0.1*(0.95**iter))
