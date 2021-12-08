@@ -15,9 +15,11 @@ def name(bid, limit, features, dataname, split=False, forgets=(None,None), **oth
    tid = "%s-%s" % (bid.replace("/","-"), limit)
    trainname = features
    if split:
-      trainname = "%s-spl%s" % (trainname, split)
+      trainname = "%s-spl%s" % (trainname, round(100*split))
    if forgets != (None,None):
-      trainname = "%s-for%sget%s" % (trainname, forgets[0], forgets[1])
+      fneg = round(100*forgets[0]) if forgets[0] != None else "None"
+      fpos = round(100*forgets[1]) if forgets[1] != None else "None"
+      trainname = "%s-for%sget%s" % (trainname, fpos, fneg)
    return os.path.join(tid, dataname, trainname)
 
 def path(**others):

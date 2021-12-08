@@ -51,7 +51,7 @@ class LightGBM(Learner):
       return "LightGBM"
 
    def desc(self):
-      d = "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)f" % self.params
+      d = "lgb-t%(num_round)s-d%(max_depth)s-l%(num_leaves)s-e%(learning_rate)s" % self.params
       for p in RELEVANT:
          if self.params[p] != DEFAULTS[p]:
             d += "-%s%s" % (RELEVANT[p], self.params[p])
