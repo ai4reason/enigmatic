@@ -19,7 +19,7 @@ def name(bid, limit, features, dataname, split=False, forgets=(None,None), **oth
    if forgets != (None,None):
       fneg = round(100*forgets[0]) if forgets[0] != None else "None"
       fpos = round(100*forgets[1]) if forgets[1] != None else "None"
-      trainname = "%s-for%sget%s" % (trainname, fpos, fneg)
+      trainname = "%s-for%sget%s" % (trainname, fneg, fpos)
    return os.path.join(tid, dataname, trainname)
 
 def path(**others):
