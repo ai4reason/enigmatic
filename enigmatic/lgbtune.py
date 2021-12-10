@@ -165,8 +165,8 @@ def train(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=100, timeout
    return (best, params, pos, neg)
 
 def lgbtune(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=None, timeout=3600.0, inits={}):
-   logger.setLevel(logging.DEBUG)
-   logger.addHandler(logging.StreamHandler(io.TextIOWrapper(os.fdopen(sys.stdout.fileno(), "wb"))))
+   #logger.setLevel(logging.DEBUG)
+   #logger.addHandler(logging.StreamHandler(io.TextIOWrapper(os.fdopen(sys.stdout.fileno(), "wb"))))
    (best, params, _, _) = train(f_train, f_test, d_tmp, phases, iters, timeout, inits)
    logger.info("")
    logger.info("Best model params: %s" % str(params))
