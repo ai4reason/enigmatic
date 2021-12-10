@@ -11,7 +11,7 @@ DEFAULTS = {
    'learning_rate': 0.15, 
    'objective': 'binary', 
    'num_round': 150,
-   'max_depth': 9, 
+   'max_depth': 0, 
    'num_leaves': 300,
    # default values from the docs:
    'min_data': 20,
