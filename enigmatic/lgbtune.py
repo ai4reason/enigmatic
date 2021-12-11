@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, io, logging
+import os, sys, io, logging, time
 import optuna
 import lightgbm as lgb
 from pyprove import redirect, human
@@ -23,21 +23,25 @@ def accuracy(bst, xs, ys):
    negacc = getacc([(x,y) for (x,y) in preds if y==0])
    return (acc, posacc, negacc)
 
-def check(trial, params, dtrain, testd,  d_tmp):
-   f_mod = os.path.join(d_tmp, "model%04d.lgb" % trial.number)
+def model(params, dtrain, testd, f_mod, barmsg="lgb"):
    f_log = f_mod + ".log"
-   ProgressBar.file = None
-   bar = ProgressBar("[trial %d]"%trial.number, max=params["num_round"])
+   if barmsg:
+      ProgressBar.file = None
+      bar = ProgressBar(barmsg, max=params["num_round"]) if barmsg else None
+   else:
+      bar = None
+   logger.debug("- building model %s" % f_mod)
    redir = redirect.start(f_log, bar)
-
    try:
       if bar: bar.start()
+      begin = time.time()
       bst = lgb.train(
          params,
          dtrain, 
          valid_sets=[dtrain],
          callbacks=[lgb.log_evaluation(1)]+([lambda _: bar.next()] if bar else [])
       )
+      end = time.time()
       bst.save_model(f_mod)
       if bar:
          bar.finish()
@@ -45,28 +49,33 @@ def check(trial, params, dtrain, testd,  d_tmp):
 
       (xs0, ys0) = testd
       acc = accuracy(bst, xs0, ys0)
-      score = POS_ACC_WEIGHT*acc[1] + acc[2]
-      trial.set_user_attr(key="model", value=f_mod)
-      trial.set_user_attr(key="acc", value=acc)
-      trial.set_user_attr(key="score", value=score)
       bst.free_dataset()
       bst.free_network()
    except Exception as e:
       redirect.finish(*redir)
       raise e
-
    redirect.finish(*redir)
+   score = POS_ACC_WEIGHT*acc[1] + acc[2]
+   return (score, acc, end-begin)
+   
+
+def check(trial, params, dtrain, testd, d_tmp, usebar):
+   f_mod = os.path.join(d_tmp, "model%04d.lgb" % trial.number)
+   barmsg = ("[trial %d]" % trial.number) if usebar else None
+   (score, acc, dur) = model(params, dtrain, testd, f_mod, barmsg)
+   trial.set_user_attr(key="model", value=f_mod)
+   trial.set_user_attr(key="score", value=score)
+   trial.set_user_attr(key="acc", value=acc)
+   trial.set_user_attr(key="time", value=dur)
    return score
 
 def check_leaves(trial, params, **args):
-   num_leaves = trial.suggest_int('num_leaves', 512, 32768, step=512)
-   #num_leaves = trial.suggest_int('num_leaves', 256, 4096, step=8)
+   num_leaves_base = trial.suggest_int('num_leaves_base', 16, 31)
+   num_leaves = round(2**(num_leaves_base/2))
    params = dict(params, num_leaves=num_leaves)
    score = check(trial, params, **args)
    acc = human.humanacc(trial.user_attrs["acc"])
    logger.debug("- leaves trial %d: %s [num_leaves=%s]" % (trial.number, acc, params["num_leaves"]))
-   #print("- leaves trial %d: test accuracy: %.2f (%.2f / %.2f) [num_leaves=%s]" % (
-   #   (trial.number,)+trial.user_attrs["acc"]+(params["num_leaves"],)))
    return score
 
 def check_bagging(trial, params, **args):
@@ -76,8 +85,6 @@ def check_bagging(trial, params, **args):
    score = check(trial, params, **args)
    acc = human.humanacc(trial.user_attrs["acc"])
    logger.debug("- bagging trial %d: %s [freq=%s, frac=%s]" % (trial.number, acc, params["bagging_freq"], params["bagging_fraction"]))
-   #print("- bagging trial %d: test accuracy: %.2f (%.2f / %.2f) [freq=%s, frac=%s]" % (
-   #   (trial.number,)+trial.user_attrs["acc"]+(params["bagging_freq"], params["bagging_fraction"])))
    return score
 
 def check_min_data(trial, params, **args):
@@ -86,8 +93,6 @@ def check_min_data(trial, params, **args):
    score = check(trial, params, **args)
    acc = human.humanacc(trial.user_attrs["acc"])
    logger.debug("- min_data trial %d: %s [min_data=%s]" % (trial.number, acc, params["min_data"]))
-   #print("- min_data trial %d: test accuracy: %.2f (%.2f / %.2f) [min_data=%s]" % (
-   #   (trial.number,)+trial.user_attrs["acc"]+(params["min_data"],)))
    return score
 
 def check_regular(trial, params, **args):
@@ -97,11 +102,7 @@ def check_regular(trial, params, **args):
    score = check(trial, params, **args)
    acc = human.humanacc(trial.user_attrs["acc"])
    logger.debug("- regular trial %d: %s [l1=%s, l2=%s]" % (trial.number, acc, params["lambda_l1"], params["lambda_l2"]))
-   #print("- lambdas trial %d: test accuracy: %.2f (%.2f / %.2f) [lambda_l1=%s, lambda_l2=%s]" % (
-   #   (trial.number,)+trial.user_attrs["acc"]+(params["lambda_l1"], params["lambda_l2"])))
    return score
-
-
 
 def tune(check_fun, nick, iters, timeout, d_tmp, sampler=None, **args):
    d_tmp = os.path.join(d_tmp, nick)
@@ -134,44 +135,48 @@ PHASES = {
    "m": tune_min_data,
 }
 
-def train(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=100, timeout=None, inits={}):
+def train(f_train, f_test, d_tmp="optuna-tmp", phases="l:b:m:r", iters=100, timeout=None, init_params=None, usebar=True):
    (xs, ys) = trains.load(f_train)
    dtrain = lgb.Dataset(xs, label=ys)
-   testd = trains.load(f_test)
+   testd = trains.load(f_test) if f_test != f_train else (xs, ys)
    os.system('mkdir -p "%s"' % d_tmp)
    redirect.module("optuna", os.path.join(d_tmp, "optuna.log"))
    
    params = dict(lgbooster.DEFAULTS)
-   params.update(inits)
+   if init_params: params.update(init_params)
    pos = sum(ys)
    neg = len(ys) - pos
    #params["scale_pos_weight"] = neg / pos
-   params["is_unbalance"] = neg != pos 
+   params["is_unbalance"] = "true" if neg != pos else "false"
+   phases = phases.split(":")
    if "m" in phases:
-      params["feature_pre_filter"] = False
+      params["feature_pre_filter"] = "false" 
    timeout = timeout / len(phases) if timeout else None
-   if iters:
-      iters += iters % len(phases)
-      iters = iters // len(phases)
-   args = dict(dtrain=dtrain, testd=testd, d_tmp=d_tmp, iters=iters, timeout=timeout)
+   iters = iters // len(phases) if iters else None
+   args = dict(dtrain=dtrain, testd=testd, d_tmp=d_tmp, iters=iters, timeout=timeout, usebar=usebar)
 
-   best = None
+   if init_params is not None:
+      f_mod = os.path.join(d_tmp, "init.lgb")
+      (score, acc, dur) = model(params, dtrain, testd, f_mod, "[init]" if usebar else None)
+      best = (score, acc, f_mod, dur)
+   else:
+      best = (-1, None, None)
+
    for phase in phases:
       trial = PHASES[phase](params=params, **args)
-      if (not best) or (trial.user_attrs["score"] > best.user_attrs["score"]):
-         best = trial
-         params.update(best.params)
+      if trial.user_attrs["score"] > best[0]:
+         best = tuple(trial.user_attrs[x] for x in ["score", "acc", "model", "time"])
+         params.update(trial.params)
+         if "num_leaves_base" in params:
+            params["num_leaves"] = round(2**(params["num_leaves_base"]/2))
+            del params["num_leaves_base"]
    
-   return (best, params, pos, neg)
+   return best + (params, pos, neg)
 
-def lgbtune(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=None, timeout=3600.0, inits={}):
-   #logger.setLevel(logging.DEBUG)
-   #logger.addHandler(logging.StreamHandler(io.TextIOWrapper(os.fdopen(sys.stdout.fileno(), "wb"))))
-   (best, params, _, _) = train(f_train, f_test, d_tmp, phases, iters, timeout, inits)
+def lgbtune(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=None, timeout=3600.0, init_params={}):
+   (_, acc, f_mod, _, params, _, _) = train(f_train, f_test, d_tmp, phases, iters, timeout, init_params)
    logger.info("")
    logger.info("Best model params: %s" % str(params))
-   logger.info("Best model accuracy: %s" % human.humanacc(best.user_attrs["acc"]))
-   logger.info("Best model file: %s" % best.user_attrs["model"])
-
-#autotune("train.in", "test.in", "lgbtune", iters=None, timeout=60)
+   logger.info("Best model accuracy: %s" % human.humanacc(acc))
+   logger.info("Best model file: %s" % f_mod)
 

@@ -38,7 +38,7 @@ class Learner:
    def readlog(self, f_log):
       return
 
-   def build(self, f_in, f_mod, f_log, options=[], init_model=None):
+   def build(self, f_in, f_mod, f_log, options=[], init_model=None, f_test=None):
       def atfinish():
          bar.finish()
          bar.file.flush()

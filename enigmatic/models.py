@@ -50,9 +50,11 @@ def batchbuilds(f_in, f_mod, learner, options, **others):
       p.join()
       nextbatch()
 
-def build(learner, f_in=None, split=False, debug=[], options=[], **others):
+def build(learner, f_in=None, f_test=None, split=False, debug=[], options=[], **others):
    others = dict(others, learner=learner, split=split, debug=debug, options=options)
    f_in = f_in if f_in else trains.filename(part=0, **others)
+   if split and not f_test:
+      f_test = trains.filename(part=0, f_name="test.in", **others)
    model = name(**others)
    logger.info("+ building model %s" % model)
    logger.info("- building with %s" % f_in)
@@ -67,7 +69,7 @@ def build(learner, f_in=None, split=False, debug=[], options=[], **others):
 
    f_log = filename(part=0, **others) + ".log"
    os.system('mkdir -p "%s"' % os.path.dirname(f_log))
-   p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None))
+   p = Process(target=learner.build, args=(f_in,f_mod,f_log,options,None,f_test))
    p.start()
    p.join()
 
