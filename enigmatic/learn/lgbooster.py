@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 DEFAULTS = {
    'learning_rate': 0.15, 
    'objective': 'binary', 
-   'num_round': 150,
+   'num_round': 250,
    'max_depth': 0, 
    'num_leaves': 300,
    # default values from the docs:
