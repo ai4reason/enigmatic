@@ -159,6 +159,7 @@ def train(f_train, f_test, d_tmp="optuna-tmp", phases="l:b:m:r", iters=100, time
       f_mod = os.path.join(d_tmp, "init.lgb")
       (score, acc, dur) = model(params, dtrain, testd, f_mod, "[init]" if usebar else None)
       best = (score, acc, f_mod, dur)
+      logger.debug("- initial model: %s" % human.humanacc(acc)) 
    else:
       best = (-1, None, None)
 
