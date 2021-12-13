@@ -119,7 +119,7 @@ Other arguments to control the tuning are described below.
 | `phases` | `"l:b:m:r"` | LightGBM parameters to tune in phases (see below) |
 | `timeout` | `3600` | tuning timeout in seconds |
 | `iters` | `None` | alternative runtime limit by the number of models to be built |
-| `init_params` | `{}` | initial model to build and setup of non-tunable parameters |
+| `init_params` | `{}` | initial model to build and default values of non-tunable parameters |
 | `min_leaves` | `256` | the minimal number of leaves in a LightGBM model |
 | `max_leaves` | `32767` | the maximal number of leaves in a LightGBM model |
 
