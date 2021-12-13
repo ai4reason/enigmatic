@@ -16,11 +16,12 @@ run = {
    "features"  : "C(l,p,x,s,r,h,v,c,d,a):G:P",
    "learner"   : LightGBM(),
    "eargs"     : "--training-examples=3 -s --free-numbers",
-   "dataname"  : "mytest"
+   "dataname"  : "mytest",
+   "iters"     : 6,
 }
 ```
 
-Then, you run, for example, the eval/train loops as follows.
+Then you run, for example, the eval/train loop as follows.
 
 ```python
 from pyprove import log
@@ -57,7 +58,7 @@ This is the list of `run` parameters supported by Enigmatic and their basic desc
 | `options` | `[str]` | option flags |
 | `debug` | `[str]` | debugging flags |
 
-### `options`: Option flags ###
+### Option flags: `options` ###
 
 The option flags are recognized.
 
@@ -67,7 +68,7 @@ The option flags are recognized.
 | `loop-coop-only` | use `coop` strategies when looping (no `solo` strategies) |
 
 
-### `debug`: Debugging flags ###
+### Debugging flags: `debug` ###
 
 The following flags are recognized.
 
@@ -108,11 +109,52 @@ Best model accuracy: 72.73% (89.74% / 64.63%)
 Best model file: optuna-tmp/min_data/model0002.lgb
 ```
 
-Other arguments to control the tunning are available, the same as for the automated usage described below.
+Other arguments to control the tunning are available, described below.
+
+### Tuner parameters ###
+
+| parameter | default | description |
+| - | - | - |
+| `d_tmp` | `"./optuna-tmp"` | tuner temporary directory |
+| `phases` | `"l:b:m:r"` | LightGBM parameters to tune in phases (see below) |
+| `timeout` | `3600` | tunning timeout in seconds |
+| `iters` | `None` | alternative runtime limit by the number of models to be built |
+| `init_params` | `{}` | initial model to build and setup of non-tunable parameters |
+| `min_leaves` | `256` | the minimal number of leaves in a LightGBM model |
+| `max_leaves` | `32767` | the maximal number of leaves in a LightGBM model |
+
+The LightGBM parameters are tuned in phases.
+Parameter `phases` controls which parameters are tuned and which order.
+The `phases` value is a string of characters from `l`, `b`, `m`, and `r` separated by `:`.
+Their meaning is as follows.
+
+| char | LightGBM params to tune |
+| - | - |
+| `l` | `num_leaves` |
+| `b` | `bagging_fraction` and `bagging_freq` |
+| `m` | `min_data` |
+| `r` | `lambda_l1` and `lambda_l2` |
+
+The number of leaves is tuned in phase (`l`) which should be the first phase.
+Using just `phases="l"` is also quite fine.
+The values for the LightGBM parameter `num_leaves` will be sampled from values _2^(n/2)_ (for all natural `n`) which 
+fall in between `min_leaves` and `max_leaves` .
+The runtime limit (`timeout` or `iters` or both) is evenly divided into each phase (hence `iters` should be dividable by the number of phases`).
+
+Unless `init_model` is set to `None`, an initial model will be built at the beginning. 
+This initial model building is not coverd by the runtime limit(s).
+Values from `init_model` are also used to set up non-tunable parameter values like `learning_rate` during the tuning.
+If some parameter value is not present in `init_model` (or `init_model` is `None`), 
+the default value from `enigmtic.learn.lgbooster.DEFAULTS` will be used.
+
+The tuner slightly favors testing accuracy on positive samples. 
+Given the testing accuracies `(posacc, negacc)` the score of the model is computed as 
+`2*posacc + negacc` and the model with highest possible score is considered the best.
+This positive accuracy weight can be controled by `enigmatic.lgbtune.POS_ACC_WEIGHT`.
 
 ### Compresssed data ###
 
-If you have Enigmatic-compatible compressed data files like `train.in-data.npz` and `train.in-label.npz` you can also use them as well.
+If you have Enigmatic-compatible compressed data files like `train.in-data.npz` and `train.in-label.npz` you can use them as well.
 It is, indeed, highly recommended in order to speed up data loading.
 But note that in the case of compressed data, you still pass just `train.in` and `test.in` to `lgbtune`.
 It will automatically recognize compressed data.
@@ -128,8 +170,29 @@ logger = log.logger("compress")
 trains.compress("train.in")
 ```
 
+### Automated usage ###
 
+You can also use automatic model building instead of standard LightGBM/XGBoost boosters (inside `models.build` or `models.loops`).
+Then, Enigmatic will automatically tune the parameters for you.
+Just run as follows.
 
+```python
+from pyprove import log
+from enigmatic import models
+from enigmatic.learn.autolgb import AutoLgb
+
+run = {
+   ...
+   "learner": AutoLgb(iters=12),
+   ...
+}
+
+models.build(**run)
+```
+
+`AutoLgb` can additionally take the same params as `lgbtune` to conrol the tunning.
+There are different defaults, however
+(`iters=30`, `phases="l:b:m"`, `timeout=None`, `init_params=None`).
 
 
 
