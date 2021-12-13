@@ -76,8 +76,8 @@ def compress(f_in):
    numpy.savez_compressed(z_label, label=label)
    logger.debug("- compressed size: %s" % human.humanbytes(size(f_in)))
 
-def forgetting(lines, forget, posbal):
-   if (forget is None) and (posbal is None):
+def forgetting(lines, forget, keep):
+   if (forget is None) and (keep is None):
       return lines
    def duplicates(line):
       nonlocal cache, lines
@@ -87,27 +87,21 @@ def forgetting(lines, forget, posbal):
    
    lines = lines.decode()
    lines = lines.strip().split("\n")
-   if forget or posbal:
+   if forget or keep:
       cache = {}
       [duplicates(l) for l in lines] 
       lines = sorted(set(lines), key=duplicates, reverse=True)
-      if posbal:
-         (poscount, balance) = posbal
-         negcount = len(lines)
-         if negcount > balance * poscount:
-            forget = (negcount - balance * poscount) / negcount
-         else:
-            forget = 0
-      idx = int((1.0-forget)*len(lines))
-      idx = min(len(lines),max(1,idx))
-      lines = lines[:idx]
+      if not keep:
+         keep= int((1.0 - forget) * len(lines))
+      keep = min(len(lines),max(1,keep))
+      lines = lines[:keep]
    else:
       lines = list(set(lines))
    lines = "\n".join(lines)+"\n"
    lines = lines.encode()
    return lines
 
-def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None, forget=0.0, posbal=None):
+def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_out=None, prefix=None, forget=0.0, keep=None):
    args = [
       "enigmatic-features", 
       "--free-numbers", 
@@ -130,7 +124,7 @@ def makesingle(f_list, features, f_problem=None, f_map=None, f_buckets=None, f_o
       out = subprocess.check_output(args)
    except subprocess.CalledProcessError as e:
       return None
-   out = forgetting(out, forget, posbal)
+   out = forgetting(out, forget, keep)
    if f_out:
       with open(f_out, "ab") as f: f.write(out)
    return out
@@ -145,13 +139,13 @@ def makes(posnegs, f_name, bid, features, cores, msg="[+/-]", d_info=None, optio
       f_map = os.path.join(d_info, p+".map") if d_info else None
       f_buckets  = os.path.join(d_info, p+".json") if d_info else None
       f_out = os.path.join(d_info, p+".in") if d_info else None
-      posbal = None
+      keep = None
       if (not pos) and balance:
          f_pos = f_list[:-4]+".pos"
          if f_pos in pos_count:
-            posbal = (pos_count[f_pos], balance)
+            keep = balance * pos_count[f_pos]
       forget = forgets[int(pos)]
-      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos, forget, posbal)
+      return (f_list, features, f_problem, f_map, f_buckets, f_out, pos, forget, keep)
    def save(job, res, bar):
       nonlocal out, part, written, parts, f_in, pos_count
       if not res: return
