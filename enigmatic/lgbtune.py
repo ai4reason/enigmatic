@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, io, logging, time
+import os, sys, io, logging, time, math
 import optuna
 import lightgbm as lgb
 from pyprove import redirect, human
@@ -59,7 +59,7 @@ def model(params, dtrain, testd, f_mod, barmsg="lgb"):
    return (score, acc, end-begin)
    
 
-def check(trial, params, dtrain, testd, d_tmp, usebar):
+def check(trial, params, dtrain, testd, d_tmp, usebar, **others):
    f_mod = os.path.join(d_tmp, "model%04d.lgb" % trial.number)
    barmsg = ("[trial %d]" % trial.number) if usebar else None
    (score, acc, dur) = model(params, dtrain, testd, f_mod, barmsg)
@@ -69,9 +69,10 @@ def check(trial, params, dtrain, testd, d_tmp, usebar):
    trial.set_user_attr(key="time", value=dur)
    return score
 
-def check_leaves(trial, params, **args):
-   num_leaves_base = trial.suggest_int('num_leaves_base', 16, 31)
-   num_leaves = round(2**(num_leaves_base/2))
+def check_leaves(trial, params, min_leaves, max_leaves, **args):
+   #num_leaves_base = trial.suggest_int('num_leaves_base', 16, 31)
+   #num_leaves = round(2**(num_leaves_base/2))
+   num_leaves = trial.suggest_int('num_leaves', min_leaves, max_leaves)
    params = dict(params, num_leaves=num_leaves)
    score = check(trial, params, **args)
    acc = human.humanacc(trial.user_attrs["acc"])
@@ -112,18 +113,19 @@ def tune(check_fun, nick, iters, timeout, d_tmp, sampler=None, **args):
    study.optimize(objective, n_trials=iters, timeout=timeout)
    return study.best_trial
 
-def tune_leaves(**args):
-   return tune(check_leaves, "leaves", **args)
+def tune_leaves(min_leaves, max_leaves, **args):
+   args = dict(args, min_leaves=min_leaves, max_leaves=max_leaves)
+   min_base = round(2*math.log2(min_leaves))
+   max_base = round(2*math.log2(max_leaves))
+   values = list([round(2**(n/2)) for n in range(min_base, max_base+1)])
+   sampler = optuna.samplers.GridSampler({"num_leaves": values})
+   return tune(check_leaves, "leaves", sampler=sampler, **args)
 
 def tune_bagging(**args):
    return tune(check_bagging, "bagging", **args)
 
 def tune_min_data(**args):
-   #name = "min_data"
-   #values = [5, 10, 25, 50, 100]
-   #sampler = optuna.samplers.GridSampler({name: values})
-   sampler = None
-   return tune(check_min_data, "min_data", sampler=sampler, **args)
+   return tune(check_min_data, "min_data", **args)
 
 def tune_regular(**args):
    return tune(check_regular, "regular", **args)
@@ -135,7 +137,18 @@ PHASES = {
    "m": tune_min_data,
 }
 
-def train(f_train, f_test, d_tmp="optuna-tmp", phases="l:b:m:r", iters=100, timeout=None, init_params=None, usebar=True):
+def train(
+   f_train,
+   f_test, 
+   d_tmp="optuna-tmp", 
+   phases="l:b:m:r", 
+   iters=100, 
+   timeout=None, 
+   init_params=None, 
+   usebar=True, 
+   min_leaves=256, 
+   max_leaves=32768
+):
    (xs, ys) = trains.load(f_train)
    dtrain = lgb.Dataset(xs, label=ys)
    testd = trains.load(f_test) if f_test != f_train else (xs, ys)
@@ -153,7 +166,16 @@ def train(f_train, f_test, d_tmp="optuna-tmp", phases="l:b:m:r", iters=100, time
       params["feature_pre_filter"] = "false" 
    timeout = timeout / len(phases) if timeout else None
    iters = iters // len(phases) if iters else None
-   args = dict(dtrain=dtrain, testd=testd, d_tmp=d_tmp, iters=iters, timeout=timeout, usebar=usebar)
+   args = dict(
+      dtrain=dtrain, 
+      testd=testd, 
+      d_tmp=d_tmp, 
+      iters=iters, 
+      timeout=timeout, 
+      usebar=usebar, 
+      min_leaves=min_leaves, 
+      max_leaves=max_leaves
+   )
 
    if init_params is not None:
       f_mod = os.path.join(d_tmp, "init.lgb")
@@ -168,9 +190,9 @@ def train(f_train, f_test, d_tmp="optuna-tmp", phases="l:b:m:r", iters=100, time
       if trial.user_attrs["score"] > best[0]:
          best = tuple(trial.user_attrs[x] for x in ["score", "acc", "model", "time"])
          params.update(trial.params)
-         if "num_leaves_base" in params:
-            params["num_leaves"] = round(2**(params["num_leaves_base"]/2))
-            del params["num_leaves_base"]
+         #if "num_leaves_base" in params:
+         #   params["num_leaves"] = round(2**(params["num_leaves_base"]/2))
+         #   del params["num_leaves_base"]
    
    return best + (params, pos, neg)
 
