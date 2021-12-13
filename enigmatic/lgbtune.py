@@ -205,7 +205,7 @@ def lgbtune(
    phases="l:b:m:r", 
    iters=None, 
    timeout=3600, 
-   init_params={}
+   init_params={},
    min_leaves=256, 
    max_leaves=32768
 ):
