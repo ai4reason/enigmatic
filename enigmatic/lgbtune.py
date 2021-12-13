@@ -59,7 +59,7 @@ def model(params, dtrain, testd, f_mod, barmsg="lgb"):
    return (score, acc, end-begin)
    
 
-def check(trial, params, dtrain, testd, d_tmp, usebar, **others):
+def check(trial, params, dtrain, testd, d_tmp, usebar, **args):
    f_mod = os.path.join(d_tmp, "model%04d.lgb" % trial.number)
    barmsg = ("[trial %d]" % trial.number) if usebar else None
    (score, acc, dur) = model(params, dtrain, testd, f_mod, barmsg)
@@ -125,7 +125,9 @@ def tune_bagging(**args):
    return tune(check_bagging, "bagging", **args)
 
 def tune_min_data(**args):
-   return tune(check_min_data, "min_data", **args)
+   values = [5, 10, 25, 50, 100]
+   sampler = optuna.samplers.GridSampler({"min_data": values})
+   return tune(check_min_data, "min_data", sampler=sampler, **args)
 
 def tune_regular(**args):
    return tune(check_regular, "regular", **args)
