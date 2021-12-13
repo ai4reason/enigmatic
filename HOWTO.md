@@ -139,7 +139,7 @@ The number of leaves is tuned in phase (`l`) which should be the first phase.
 Using just `phases="l"` is also quite fine.
 The values for the LightGBM parameter `num_leaves` will be sampled from values _2^(n/2)_ (for all natural `n`) which 
 fall in between `min_leaves` and `max_leaves`.
-The runtime limit (`timeout` or `iters` or both) is evenly divided into each phase (hence `iters` should be dividable by the number of phases`).
+The runtime limit (`timeout` or `iters` or both) is evenly divided into each phase (hence `iters` should be dividable by the number of phases).
 Note that the timeout limit is checked only after finishing model building, so at least one model will be built in each phase.
 
 Unless `init_params` is set to `None`, an initial model will be built at the beginning. 
