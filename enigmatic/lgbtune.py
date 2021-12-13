@@ -198,8 +198,29 @@ def train(
    
    return best + (params, pos, neg)
 
-def lgbtune(f_train, f_test, d_tmp="optuna-tmp", phases="lbmr", iters=None, timeout=3600.0, init_params={}):
-   (_, acc, f_mod, _, params, _, _) = train(f_train, f_test, d_tmp, phases, iters, timeout, init_params)
+def lgbtune(
+   f_train, 
+   f_test, 
+   d_tmp="optuna-tmp", 
+   phases="l:b:m:r", 
+   iters=None, 
+   timeout=3600, 
+   init_params={}
+   min_leaves=256, 
+   max_leaves=32768
+):
+   (_, acc, f_mod, _, params, _, _) = train(
+      f_train, 
+      f_test, 
+      d_tmp, 
+      phases, 
+      iters, 
+      timeout, 
+      init_params, 
+      True, 
+      min_leaves, 
+      max_leaves
+   )
    logger.info("")
    logger.info("Best model params: %s" % str(params))
    logger.info("Best model accuracy: %s" % human.humanacc(acc))
